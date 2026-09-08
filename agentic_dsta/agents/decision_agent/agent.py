@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This agent is responsible for managing marketing campaigns for customers stored in Firestore."""
+import datetime
 import logging
 import os
 import time
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 import uuid
 
 from google.genai import Client
@@ -23,6 +24,8 @@ from google.genai import types
 from google.adk.models.google_llm import Gemini
 from google.adk import apps
 from google.adk import runners
+from google.adk.tools.base_toolset import BaseToolset
+from google.adk.tools.function_tool import FunctionTool
 
 from agentic_dsta.tools.api_hub.apihub_toolset import DynamicMultiAPIToolset
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
@@ -39,6 +42,31 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION")
+
+
+def get_current_datetime() -> Dict[str, Any]:
+    """Returns the current date, time, year, and timezone in UTC.
+
+    Use this tool to determine today's date and calculate date ranges for forecasts
+    or historical comparisons without writing code.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return {
+        "current_date": now.strftime("%Y-%m-%d"),
+        "current_time_utc": now.strftime("%H:%M:%S"),
+        "current_year": now.year,
+        "current_month": now.month,
+        "current_day": now.day,
+        "iso_timestamp": now.isoformat(),
+        "timezone": "UTC",
+    }
+
+
+class DateTimeToolset(BaseToolset):
+    """Toolset providing date and time utilities for the decision agent."""
+
+    async def get_tools(self, readonly_context: Optional[Any] = None) -> List[FunctionTool]:
+        return [FunctionTool(func=get_current_datetime)]
 
 
 def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgent:
@@ -58,6 +86,7 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
         DynamicMultiAPIToolset(),
         FirestoreToolset(),
         SA360Toolset(),
+        DateTimeToolset(),
     ]
 
     client = Client(
@@ -276,6 +305,10 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             extra={"campaign_id": str(campaign_id), "campaign_index": idx, "total_campaigns": len(campaigns)},
         )
 
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        today_str = now_utc.strftime("%Y-%m-%d")
+        three_days_later_str = (now_utc + datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+
         # Construct the context-rich prompt
         combined_instruction = f"""
         You are a Marketing Campaign Manager Agent.
@@ -288,6 +321,12 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         Campaign ID: {campaign_id}
         Campaign Specific Rules: {campaign_instruction}
 
+        **Current Temporal Context:**
+        - Today's Date: {today_str} (UTC)
+        - Current Year: {now_utc.year}
+        - 3-Day Forecast Window: {today_str} to {three_days_later_str}
+        - Previous 3 Years for Historical Baseline: {now_utc.year - 1}, {now_utc.year - 2}, {now_utc.year - 3}
+
         **Task:**
         1. Analyze the current situation for Campaign {campaign_id}.
         2. Check if any external factors (Weather, POLLEN, AQI etc) are relevant based on the instructions.
@@ -296,6 +335,12 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         4. Decide on an action (Pause, Enable, Change Bid, Change Location, or No Action).
         5. Execute the action if necessary.
         6. Provide a concise summary of your analysis and actions.
+
+        **CRITICAL EXECUTION RULES:**
+        - You MUST invoke tools directly using standard function calling one by one.
+        - NEVER output Python code, scripts, loops, `print()` statements, or `import` statements. You do NOT have a Python code execution environment.
+        - You already have today's date ({today_str}) in context. Do not try to run python to calculate dates or periods.
+        - Any mathematical comparisons (e.g. comparing temperatures >= 3°C) must be performed directly in your thought reasoning, not in code blocks.
         """
 
         try:
