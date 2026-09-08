@@ -20,14 +20,17 @@ resource "google_project_service" "apihub_service" {
 
 
 
-data "google_project" "project" {
-  project_id = var.project_id
+resource "google_project_service_identity" "apihub_sa" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "apihub.googleapis.com"
+  depends_on = [google_project_service.apihub_service]
 }
 
 # There is a delay between when the service is enabled and when the service account is created.
 resource "time_sleep" "wait_for_service_identity" {
-  create_duration = "60s"
-  depends_on      = [google_project_service.apihub_service]
+  create_duration = "30s"
+  depends_on      = [google_project_service_identity.apihub_sa]
 }
 
 # Grant Admin role to service identity
@@ -39,7 +42,7 @@ resource "google_project_iam_member" "apihub_service_identity_permission" {
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-apihub.iam.gserviceaccount.com"
-  depends_on = [time_sleep.wait_for_service_identity]
+  depends_on = [time_sleep.wait_for_service_identity, google_project_service_identity.apihub_sa]
 }
 
 # Initialization Script

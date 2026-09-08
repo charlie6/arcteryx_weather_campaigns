@@ -105,7 +105,7 @@ class DynamicMultiAPIToolset(BaseToolset):
     def __init__(
         self,
         project_id: Optional[str] = None,
-        location: str = "us-central1",
+        location: Optional[str] = None,
         filter_tags: Optional[List[str]] = None,
         max_apis: int = 50
     ):
@@ -113,14 +113,19 @@ class DynamicMultiAPIToolset(BaseToolset):
         Initialize and discover APIs from API Hub.
 
         Args:
-            project_id: GCP project ID
-            location: API Hub location
+            project_id: GCP project ID (defaults to GOOGLE_CLOUD_PROJECT env var)
+            location: API Hub location (defaults to API_HUB_LOCATION or GOOGLE_CLOUD_LOCATION env var, fallback: us-central1)
             filter_tags: Optional list of tags to filter APIs (e.g., ["production", "internal"])
             max_apis: Maximum number of APIs to load (default: 50)
         """
         super().__init__()
         self._project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
-        self._location = location
+        self._location = (
+            location
+            or os.environ.get("API_HUB_LOCATION")
+            or os.environ.get("GOOGLE_CLOUD_LOCATION")
+            or "us-central1"
+        )
         self._filter_tags = filter_tags or []
         self._max_apis = max_apis
         self._api_toolsets = []

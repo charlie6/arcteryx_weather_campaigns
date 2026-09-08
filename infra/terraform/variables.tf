@@ -222,6 +222,12 @@ variable "sa360_force_user_creds" {
   default     = "false"
 }
 
+variable "google_ads_login_customer_id" {
+  description = "The login customer ID (MCC) to use for Google Ads API requests."
+  type        = string
+  default     = ""
+}
+
 # --- Scheduler Variables ---
 
 variable "sa_run_sse_scheduler_job_name" {
@@ -311,5 +317,8 @@ variable "secret_values" {
   sensitive   = true
 }
 
-
-
+variable "log_level" {
+  description = "Log level for the Cloud Run application (DEBUG, INFO, WARNING, ERROR)."
+  type        = string
+  default     = "INFO"
+}

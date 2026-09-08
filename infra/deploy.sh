@@ -62,6 +62,12 @@ if [ ! -f "$TFVARS_GEN_SCRIPT" ]; then
     exit 1
 fi
 
+# Ensure required python dependencies for deploy scripts are installed
+if ! python3 -c "import google.cloud.firestore" &> /dev/null; then
+    echo "Installing google-cloud-firestore for deployment scripts..."
+    pip install --quiet google-cloud-firestore pyyaml
+fi
+
 # 2. Get configuration from config.yaml
 PROJECT_ID=$(get_config_value "$CONFIG_FILE" "project_id")
 REGION=$(get_config_value "$CONFIG_FILE" "region")
@@ -88,6 +94,32 @@ fi
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # 3. Set up Service Account for deployment
+echo "--- Ensuring required foundational APIs are enabled ---"
+gcloud services enable \
+  weather.googleapis.com \
+  pollen.googleapis.com \
+  airquality.googleapis.com \
+  compute.googleapis.com \
+  cloudbuild.googleapis.com \
+  iamcredentials.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  iam.googleapis.com \
+  storage.googleapis.com \
+  apihub.googleapis.com \
+  firestore.googleapis.com \
+  secretmanager.googleapis.com \
+  aiplatform.googleapis.com \
+  run.googleapis.com \
+  artifactregistry.googleapis.com \
+  cloudscheduler.googleapis.com \
+  googleads.googleapis.com \
+  searchads360.googleapis.com \
+  sheets.googleapis.com \
+  --project="$PROJECT_ID"
+
+echo "--- Ensuring API Hub Service Identity exists ---"
+gcloud beta services identity create --service=apihub.googleapis.com --project="$PROJECT_ID" 2>/dev/null || true
+
 echo "--- Ensuring deployment Service Account '$SA_NAME' exists and has permissions ---"
 
 # Use a more robust check for the service account's existence
@@ -150,10 +182,22 @@ sleep 30
 
 # Grant the default Compute Engine service account the ability to read from GCS,
 # which is required by Cloud Build to fetch the source code.
+echo "   Ensuring Compute Engine and Cloud Build APIs are enabled..."
+gcloud services enable compute.googleapis.com cloudbuild.googleapis.com --project="$PROJECT_ID"
+
 echo "   Granting Cloud Build worker permission to read source code..."
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
 GCE_DEFAULT_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 GCE_ROLE="roles/storage.objectViewer"
+
+# Allow up to 30 seconds for the default Compute Engine service account to be provisioned if the API was just enabled
+for i in {1..6}; do
+  if gcloud iam service-accounts describe "$GCE_DEFAULT_SA" --project="$PROJECT_ID" &>/dev/null; then
+    break
+  fi
+  echo "   Waiting for default Compute Engine service account ($GCE_DEFAULT_SA) to be created by GCP... ($i/6)"
+  sleep 5
+done
 
 if gcloud projects get-iam-policy "$PROJECT_ID" --format="json" | \
   python3 -c "import sys, json; policy = json.load(sys.stdin); print(any(b['role'] == '$GCE_ROLE' and 'serviceAccount:$GCE_DEFAULT_SA' in b.get('members', []) for b in policy.get('bindings', [])))" | \
@@ -195,9 +239,34 @@ for role in "${USER_ROLES_ON_SA[@]}"; do
   fi
 done
 
-# Add a delay to allow user roles on the SA to propagate before impersonation
-echo "   Waiting for 30 seconds for user permissions to propagate..."
-sleep 30
+# Also ensure project-level Service Account Token Creator is granted to the user
+if ! gcloud projects get-iam-policy "$PROJECT_ID" --format="json" | \
+  python3 -c "import sys, json; policy = json.load(sys.stdin); print(any(b['role'] == 'roles/iam.serviceAccountTokenCreator' and 'user:$RUNNER_USER' in b.get('members', []) for b in policy.get('bindings', [])))" | \
+  grep -q "True"; then
+  echo "   Applying project-level Service Account Token Creator role for $RUNNER_USER..."
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="user:$RUNNER_USER" \
+    --role="roles/iam.serviceAccountTokenCreator" \
+    --condition=None > /dev/null 2>&1 || true
+fi
+
+# Verify token generation before setting gcloud impersonation
+echo "   Verifying service account token generation for $SA_EMAIL..."
+IMPERSONATION_SUCCESS=false
+for i in {1..8}; do
+  if gcloud auth print-access-token --impersonate-service-account="$SA_EMAIL" &>/dev/null; then
+    IMPERSONATION_SUCCESS=true
+    echo "   Impersonation token verified successfully."
+    break
+  fi
+  echo "   Waiting for IAM permissions to propagate globally... ($i/8)"
+  sleep 10
+done
+
+if [ "$IMPERSONATION_SUCCESS" = false ]; then
+  echo "Error: Failed to generate impersonation token for $SA_EMAIL after propagation wait."
+  exit 1
+fi
 
 echo "✅ Service Account permissions are set."
 

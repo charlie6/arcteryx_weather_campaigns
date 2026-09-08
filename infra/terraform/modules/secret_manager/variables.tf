@@ -24,7 +24,8 @@ variable "secret_names" {
     "GOOGLE_ADS_DEVELOPER_TOKEN",
     "USER_REFRESH_TOKEN",
     "USER_CLIENT_ID",
-    "USER_CLIENT_SECRET"
+    "USER_CLIENT_SECRET",
+    "GOOGLE_API_KEY"
   ]
 }
 

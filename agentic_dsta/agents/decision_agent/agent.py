@@ -14,8 +14,9 @@
 """This agent is responsible for managing marketing campaigns for customers stored in Firestore."""
 import logging
 import os
+import time
+from typing import Any, List, Optional
 import uuid
-from typing import List, Optional
 
 from google.genai import Client
 from google.genai import types
@@ -76,67 +77,204 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
     )
 
 
+def _log_agent_chunk(chunk: Any, campaign_id: str) -> None:
+    """Safely extracts and logs events, tool calls, and outputs from an agent execution chunk.
+
+    Args:
+        chunk: The event or message chunk yielded by runner.run_async.
+        campaign_id: ID of the campaign being processed, used for context tagging.
+    """
+    try:
+        # Check direct text attribute
+        if hasattr(chunk, "text") and chunk.text:
+            text = str(chunk.text).strip()
+            if text:
+                logger.info(
+                    "[Campaign %s] Agent output: %s",
+                    campaign_id,
+                    text,
+                    extra={"campaign_id": str(campaign_id), "chunk_type": "text"},
+                )
+
+        # Check content object with parts
+        content = getattr(chunk, "content", None)
+        if content:
+            parts = getattr(content, "parts", [])
+            for part in parts:
+                # Function/Tool call
+                if hasattr(part, "function_call") and part.function_call:
+                    fc = part.function_call
+                    name = getattr(fc, "name", "unknown_tool")
+                    args = getattr(fc, "args", {})
+                    logger.info(
+                        "[Campaign %s] Invoking tool '%s' with args: %s",
+                        campaign_id,
+                        name,
+                        args,
+                        extra={
+                            "campaign_id": str(campaign_id),
+                            "tool_name": name,
+                            "tool_args": args,
+                        },
+                    )
+                # Function/Tool response
+                elif hasattr(part, "function_response") and part.function_response:
+                    fr = part.function_response
+                    name = getattr(fr, "name", "unknown_tool")
+                    resp = getattr(fr, "response", "")
+                    resp_str = str(resp)
+                    if len(resp_str) > 500:
+                        resp_str = resp_str[:500] + "... [truncated]"
+                    logger.info(
+                        "[Campaign %s] Tool '%s' response: %s",
+                        campaign_id,
+                        name,
+                        resp_str,
+                        extra={
+                            "campaign_id": str(campaign_id),
+                            "tool_name": name,
+                        },
+                    )
+                # Thought / Reasoning text
+                elif hasattr(part, "text") and part.text:
+                    thought = str(part.text).strip()
+                    if thought:
+                        logger.info(
+                            "[Campaign %s] Agent reasoning: %s",
+                            campaign_id,
+                            thought,
+                            extra={
+                                "campaign_id": str(campaign_id),
+                                "chunk_type": "reasoning",
+                            },
+                        )
+
+        # Check for event actions
+        if hasattr(chunk, "actions") and chunk.actions:
+            logger.info(
+                "[Campaign %s] Agent action: %s",
+                campaign_id,
+                chunk.actions,
+                extra={"campaign_id": str(campaign_id)},
+            )
+    except Exception as err:
+        logger.debug(
+            "[Campaign %s] Unable to parse chunk (%s): %s",
+            campaign_id,
+            err,
+            str(chunk)[:200],
+            extra={"campaign_id": str(campaign_id)},
+        )
+
+
 async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleAds") -> None:
     """
     Main entry point for the Decision Agent.
     Controller Logic:
-    1. Fetches Customer Intent/Instructions.
-    2. Fetches Google Ads Config for Google Ads Tools or SA360Config for SA360 Tools.
+    1. Fetches Customer Intent/Instructions from Firestore.
+    2. Fetches Google Ads Config or SA360Config from Firestore.
     3. Loops through campaigns, creating an isolated agent for each.
 
     Args:
         customer_id: The customer ID to process.
+        usecase: Target platform ('GoogleAds' or 'SA360').
     """
-    logger.info("Starting Decision Agent for Customer: %s", customer_id)
+    total_start_time = time.perf_counter()
+    logger.info(
+        "=== Starting Decision Agent Run: customer_id=%s, usecase=%s ===",
+        customer_id,
+        usecase or "GoogleAds",
+        extra={"customer_id": str(customer_id), "usecase": str(usecase)},
+    )
 
     # 1. Fetch Global Instructions
     firestore_toolset = FirestoreToolset()
+    logger.info(
+        "Fetching global instructions from Firestore: collection=CustomerInstructions, doc_id=%s",
+        customer_id,
+    )
     try:
         doc = firestore_toolset.get_document(collection="CustomerInstructions", document_id=customer_id)
         if not doc:
-             logger.warning("No CustomerInstructions found for customer_id: %s", customer_id)
-             global_instruction = ""
+            logger.warning(
+                "No document found in Firestore collection 'CustomerInstructions' for customer_id: %s",
+                customer_id,
+            )
+            global_instruction = ""
         else:
-             global_instruction = doc.get("data", {}).get("instruction", "")
+            global_instruction = doc.get("data", {}).get("instruction", "")
+            logger.info(
+                "Loaded CustomerInstructions for customer_id=%s (%d characters)",
+                customer_id,
+                len(global_instruction),
+            )
     except Exception as e:
-         logger.error("Error fetching CustomerInstructions for %s: %s", customer_id, e)
-         global_instruction = ""
+        logger.exception("Error fetching CustomerInstructions for customer_id=%s: %s", customer_id, e)
+        global_instruction = ""
 
     if not global_instruction:
-        logger.warning("No global instructions found for customer %s. Aborting.", customer_id)
+        logger.warning(
+            "No global instructions found for customer_id=%s in Firestore 'CustomerInstructions'. Aborting run.",
+            customer_id,
+        )
         return
 
     # 2. Fetch Campaign Config
+    collection = (usecase or "GoogleAds") + "Config"
+    logger.info(
+        "Fetching campaign configuration from Firestore: collection=%s, doc_id=%s",
+        collection,
+        customer_id,
+    )
     try:
-        collection = usecase + "Config"
         doc = firestore_toolset.get_document(collection=collection, document_id=customer_id)
         if not doc:
-            logger.warning("No %s found for customer_id: %s", collection, customer_id)
+            logger.warning("No document found in Firestore collection '%s' for customer_id: %s", collection, customer_id)
             ads_config = {}
         else:
             ads_config = doc.get("data", {})
     except Exception as e:
-        logger.error("Error fetching %s for %s: %s", collection, customer_id, e)
+        logger.exception("Error fetching %s for customer_id=%s: %s", collection, customer_id, e)
         ads_config = {}
+
     campaigns = ads_config.get("campaigns", [])
-    
 
     if not campaigns:
-        logger.info("No campaigns found for customer %s.", customer_id)
+        logger.info(
+            "No campaigns configured in %s for customer_id=%s. Completed with no actions.",
+            collection,
+            customer_id,
+        )
         return
 
-    logger.info("Found %s campaigns for customer %s.", len(campaigns), customer_id)
+    logger.info(
+        "Discovered %d campaign(s) in %s for customer_id=%s: %s",
+        len(campaigns),
+        collection,
+        customer_id,
+        [c.get("campaignId") for c in campaigns],
+    )
 
-    # 3. Loop and Process
-    for campaign in campaigns:
+    # 3. Loop and Process Each Campaign
+    successful_campaigns = 0
+    failed_campaigns = 0
+
+    for idx, campaign in enumerate(campaigns, start=1):
         campaign_id = campaign.get("campaignId")
         campaign_instruction = campaign.get("instruction", "No specific instruction.")
 
         if not campaign_id:
-            logger.warning("Skipping campaign with missing campaignId.")
+            logger.warning("Skipping campaign %d/%d: missing 'campaignId' field.", idx, len(campaigns))
             continue
 
-        logger.info("Processing Campaign: %s", campaign_id)
+        campaign_start_time = time.perf_counter()
+        logger.info(
+            "--- Processing Campaign %d/%d: ID=%s ---",
+            idx,
+            len(campaigns),
+            campaign_id,
+            extra={"campaign_id": str(campaign_id), "campaign_index": idx, "total_campaigns": len(campaigns)},
+        )
 
         # Construct the context-rich prompt
         combined_instruction = f"""
@@ -178,21 +316,49 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             prompt_text = f"Proceed with the analysis and management of Campaign {campaign_id} based on your instructions."
             content = types.Content(parts=[types.Part(text=prompt_text)])
 
-            logger.info("Executing agent via Runner for Campaign %s", campaign_id)
+            logger.info("Executing agent runner for Campaign %s (session_id=%s)", campaign_id, session_id)
             async for chunk in runner.run_async(
                 user_id=customer_id,
                 session_id=session_id,
                 new_message=content
             ):
-                pass
+                _log_agent_chunk(chunk, str(campaign_id))
 
-            logger.info("Result for Campaign %s: Execution Completed", campaign_id)
+            campaign_elapsed = time.perf_counter() - campaign_start_time
+            logger.info(
+                "Execution completed successfully for Campaign %s in %.2fs",
+                campaign_id,
+                campaign_elapsed,
+                extra={"campaign_id": str(campaign_id), "duration_s": campaign_elapsed},
+            )
+            successful_campaigns += 1
 
         except Exception as e:
-            logger.error("Failed to process campaign %s: %s", campaign_id, e)
-            # Continue to next campaign even if this one fails
+            campaign_elapsed = time.perf_counter() - campaign_start_time
+            logger.exception(
+                "Failed to process Campaign %s after %.2fs: %s",
+                campaign_id,
+                campaign_elapsed,
+                e,
+                extra={"campaign_id": str(campaign_id), "duration_s": campaign_elapsed},
+            )
+            failed_campaigns += 1
             continue
 
-    logger.info("Completed run for Customer: %s", customer_id)
+    total_elapsed = time.perf_counter() - total_start_time
+    logger.info(
+        "=== Completed Decision Agent Run for Customer %s in %.2fs (success: %d, failed: %d) ===",
+        customer_id,
+        total_elapsed,
+        successful_campaigns,
+        failed_campaigns,
+        extra={
+            "customer_id": str(customer_id),
+            "total_duration_s": total_elapsed,
+            "successful_campaigns": successful_campaigns,
+            "failed_campaigns": failed_campaigns,
+        },
+    )
+
 
 root_agent = create_agent(instruction="You are a decision agent helper.")

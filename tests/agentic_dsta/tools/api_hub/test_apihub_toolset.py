@@ -70,6 +70,25 @@ class TestApiHubToolset(unittest.IsolatedAsyncioTestCase):
     def test_dynamic_multi_api_toolset_init(self, mock_discover):
         toolset = apihub_toolset.DynamicMultiAPIToolset()
         mock_discover.assert_called_once()
+        self.assertEqual(toolset._location, "us-central1")
+
+    @patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test_project", "API_HUB_LOCATION": "us-west1"})
+    @patch('agentic_dsta.tools.api_hub.apihub_toolset.DynamicMultiAPIToolset._discover_and_load_apis')
+    def test_dynamic_multi_api_toolset_init_custom_location_env(self, mock_discover):
+        toolset = apihub_toolset.DynamicMultiAPIToolset()
+        self.assertEqual(toolset._location, "us-west1")
+
+    @patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test_project", "GOOGLE_CLOUD_LOCATION": "us-west1"})
+    @patch('agentic_dsta.tools.api_hub.apihub_toolset.DynamicMultiAPIToolset._discover_and_load_apis')
+    def test_dynamic_multi_api_toolset_init_google_cloud_location_env(self, mock_discover):
+        toolset = apihub_toolset.DynamicMultiAPIToolset()
+        self.assertEqual(toolset._location, "us-west1")
+
+    @patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test_project"})
+    @patch('agentic_dsta.tools.api_hub.apihub_toolset.DynamicMultiAPIToolset._discover_and_load_apis')
+    def test_dynamic_multi_api_toolset_init_explicit_location(self, mock_discover):
+        toolset = apihub_toolset.DynamicMultiAPIToolset(location="us-west1")
+        self.assertEqual(toolset._location, "us-west1")
 
     @patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test_project"})
     @patch('agentic_dsta.tools.api_hub.apihub_toolset._list_apis_from_apihub', return_value=[{"name":"p/l/a/test_api", "displayName":"Test API"}])

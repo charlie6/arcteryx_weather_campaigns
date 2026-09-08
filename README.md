@@ -188,15 +188,45 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     *   And others as defined in `infra/deploy.sh`.
 *   Subsequent runs of `deploy.sh` use this service account's permissions via impersonation.
 
-*   **Enable/Provision the following APIs in your project if not already enabled:**
-    *   [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com)
-    *   [Provision Google Cloud API Hub API](https://docs.cloud.google.com/apigee/docs/apihub/provision) (Ensure "Enable Semantic search capability" is checked)
-    *   [Spreadsheets API](https://console.cloud.google.com/marketplace/product/google/sheets.googleapis.com)
-    *   [SA360 Reporting API](https://console.cloud.google.com/marketplace/product/google/searchads360.googleapis.com)
-    *   [Google Ads API](https://console.cloud.google.com/marketplace/product/google/googleads.googleapis.com)
-    *   [Pollen API](https://console.cloud.google.com/marketplace/product/google/pollen.googleapis.com)
-    *   [AirQuality API](https://console.cloud.google.com/marketplace/product/google/airquality.googleapis.com)
-    *   [Weather API](https://console.cloud.google.com/marketplace/product/google/weather.googleapis.com)
+*   **Enable the required APIs in your project:**
+    ```bash
+    gcloud services enable \
+      weather.googleapis.com \
+      pollen.googleapis.com \
+      airquality.googleapis.com \
+      compute.googleapis.com \
+      cloudbuild.googleapis.com \
+      iamcredentials.googleapis.com \
+      run.googleapis.com \
+      artifactregistry.googleapis.com \
+      cloudscheduler.googleapis.com \
+      aiplatform.googleapis.com \
+      firestore.googleapis.com \
+      secretmanager.googleapis.com \
+      storage.googleapis.com \
+      iam.googleapis.com \
+      cloudresourcemanager.googleapis.com \
+      apihub.googleapis.com \
+      googleads.googleapis.com \
+      searchads360.googleapis.com \
+      sheets.googleapis.com
+    ```
+
+*   **Generate API Hub Service Identity & Provision API Hub:**
+    Google Cloud does not automatically create the API Hub Service Identity (`service-PROJECT_NUMBER@gcp-sa-apihub.iam.gserviceaccount.com`) when the API is enabled. GCP requires it to be explicitly generated or provisioned before IAM permissions can be granted to it.
+    
+    1. Create the API Hub service identity:
+       ```bash
+       gcloud beta services identity create --service=apihub.googleapis.com --project=[YOUR_PROJECT_ID]
+       ```
+    2. Provision API Hub via [Google Cloud Console](https://console.cloud.google.com/apihub) in your target region (e.g. `us-west1` or `us-central1`) and ensure **"Enable Semantic search capability"** is checked.
+
+*   **Grant Service Account Token Creator to the Deploying User:**
+    ```bash
+    gcloud projects add-iam-policy-binding [YOUR_PROJECT_ID] \
+      --member="user:$(gcloud config get-value account)" \
+      --role="roles/iam.serviceAccountTokenCreator"
+    ```
 
 ### Local Environment
 

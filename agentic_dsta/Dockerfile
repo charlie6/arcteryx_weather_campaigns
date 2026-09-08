@@ -21,6 +21,7 @@ USER myuser
 ENV PATH="/home/myuser/.local/bin:$PATH"
 ENV GOOGLE_CLOUD_LOCATION="us-central1"
 ENV GOOGLE_GENAI_USE_VERTEXAI="True"
+ENV PYTHONUNBUFFERED=1
 
 
 CMD ["sh", "-c", "uvicorn agentic_dsta.main:app --host 0.0.0.0 --port $PORT"]

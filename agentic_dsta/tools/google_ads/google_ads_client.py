@@ -41,9 +41,13 @@ def get_google_ads_client(customer_id: str):
           logger.error("GOOGLE_ADS_DEVELOPER_TOKEN not set in environment.")
           return None
 
+      login_customer_id = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID") or customer_id
+      if login_customer_id:
+          login_customer_id = str(login_customer_id).replace("-", "").strip()
+
       return google.ads.googleads.client.GoogleAdsClient(
           credentials,
-          login_customer_id=customer_id,
+          login_customer_id=login_customer_id,
           developer_token=developer_token,
           use_proto_plus=True,
       )

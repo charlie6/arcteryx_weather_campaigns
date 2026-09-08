@@ -5,6 +5,7 @@ region: "YOUR_REGION"
 # Resource Naming
 resource_prefix: "YOUR_RESOURCE_PREFIX"
 allow_unauthenticated: true
+log_level: "INFO"
 
 # Firestore Configuration
 firestore_database_type: "FIRESTORE_NATIVE"
@@ -19,6 +20,10 @@ additional_secrets: ["GOOGLE_API_KEY"]
 
 #Google Ads Customer ID to be triggered from cloud scheduler
 googleads_customer_id: "GOOGLE_ADS_CUSTOMER_ID"
+
+# Auth and MCC Configuration
+google_ads_force_user_creds: "true"
+google_ads_login_customer_id: "YOUR_MCC_CUSTOMER_ID"
 
 #SA360 Customer ID to be triggered from cloud scheduler
 sa360_customer_id: "SA360_CUSTOMER_ID"
