@@ -41,7 +41,7 @@ resource "google_project_iam_member" "apihub_service_identity_permission" {
   ])
   project = var.project_id
   role    = each.key
-  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-apihub.iam.gserviceaccount.com"
+  member  = "serviceAccount:${google_project_service_identity.apihub_sa.email}"
   depends_on = [time_sleep.wait_for_service_identity, google_project_service_identity.apihub_sa]
 }
 
