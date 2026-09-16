@@ -279,12 +279,245 @@ class TestListAssetGroups(unittest.TestCase):
     self.assertFalse(result["success"])
 
 
+class TestGaqlEscaping(unittest.TestCase):
+  """Names come from operator-managed config, so they must be escaped."""
+
+  def test_plain_name_is_unchanged(self):
+    self.assertEqual(
+        google_ads_asset_groups._escape_gaql_string_literal(COLD_GROUP),
+        COLD_GROUP,
+    )
+
+  def test_single_quote_is_escaped(self):
+    self.assertEqual(
+        google_ads_asset_groups._escape_gaql_string_literal("Arc'teryx"),
+        "Arc\\'teryx",
+    )
+
+  def test_backslash_is_escaped_before_quotes(self):
+    # The backslash must be doubled first, otherwise the escape character
+    # introduced for the quote would itself be re-escaped.
+    self.assertEqual(
+        google_ads_asset_groups._escape_gaql_string_literal("a\\b'c"),
+        "a\\\\b\\'c",
+    )
+
+  def test_none_is_tolerated(self):
+    self.assertEqual(
+        google_ads_asset_groups._escape_gaql_string_literal(None), ""
+    )
+
+
+class TestFindAssetGroupByName(unittest.TestCase):
+
+  def _client_returning(self, rows):
+    client = MagicMock()
+    ga_service = MagicMock()
+    ga_service.search.return_value = iter(rows)
+    client.get_service.return_value = ga_service
+    return client
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_single_match_is_resolved(self, mock_get_client):
+    mock_get_client.return_value = self._client_returning(
+        [_mock_row(2, COLD_GROUP, "PAUSED")]
+    )
+
+    result = google_ads_asset_groups.find_google_ads_asset_group_by_name(
+        "12345", "ARC_Campaign", COLD_GROUP
+    )
+
+    self.assertTrue(result["success"])
+    self.assertEqual(result["asset_group_id"], "2")
+    self.assertFalse(result["is_always_on"])
+    self.assertTrue(result["can_be_paused"])
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_no_match_reports_error(self, mock_get_client):
+    mock_get_client.return_value = self._client_returning([])
+
+    result = google_ads_asset_groups.find_google_ads_asset_group_by_name(
+        "12345", "ARC_Campaign", COLD_GROUP
+    )
+
+    self.assertFalse(result["success"])
+    self.assertIn("No asset group named", result["error"])
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_ambiguous_match_is_reported(self, mock_get_client):
+    mock_get_client.return_value = self._client_returning([
+        _mock_row(2, COLD_GROUP, "PAUSED"),
+        _mock_row(4, COLD_GROUP, "ENABLED"),
+    ])
+
+    result = google_ads_asset_groups.find_google_ads_asset_group_by_name(
+        "12345", "ARC_Campaign", COLD_GROUP
+    )
+
+    self.assertFalse(result["success"])
+    self.assertTrue(result["ambiguous"])
+    self.assertEqual(len(result["matches"]), 2)
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_always_on_group_is_flagged(self, mock_get_client):
+    mock_get_client.return_value = self._client_returning(
+        [_mock_row(3, ALWAYS_ON_GROUP, "ENABLED")]
+    )
+
+    result = google_ads_asset_groups.find_google_ads_asset_group_by_name(
+        "12345", "ARC_Campaign", ALWAYS_ON_GROUP
+    )
+
+    self.assertTrue(result["success"])
+    self.assertTrue(result["is_always_on"])
+    self.assertFalse(result["can_be_paused"])
+    self.assertIn("always-on", result["pause_block_reason"])
+
+
+class TestUpdateAssetGroupStatusByName(unittest.TestCase):
+
+  def _client_returning(self, rows):
+    client = MagicMock()
+    ga_service = MagicMock()
+    ga_service.search.return_value = iter(rows)
+    asset_group_service = MagicMock()
+    asset_group_service.mutate_asset_groups.return_value = MagicMock(
+        results=[MagicMock(resource_name="customers/1/assetGroups/2")]
+    )
+
+    def get_service(name):
+      return ga_service if name == "GoogleAdsService" else asset_group_service
+
+    client.get_service.side_effect = get_service
+    return client, asset_group_service
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_enable_by_name(self, mock_get_client):
+    client, asset_group_service = self._client_returning(
+        [_mock_row(2, COLD_GROUP, "PAUSED")]
+    )
+    mock_get_client.return_value = client
+
+    result = (
+        google_ads_asset_groups.update_google_ads_asset_group_status_by_name(
+            "12345", "ARC_Campaign", COLD_GROUP, "ENABLED"
+        )
+    )
+
+    self.assertTrue(result["success"])
+    self.assertEqual(result["previous_status"], "PAUSED")
+    self.assertEqual(result["new_status"], "ENABLED")
+    asset_group_service.mutate_asset_groups.assert_called_once()
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_pause_always_on_by_name_is_blocked(self, mock_get_client):
+    client, asset_group_service = self._client_returning(
+        [_mock_row(3, ALWAYS_ON_GROUP, "ENABLED")]
+    )
+    mock_get_client.return_value = client
+
+    result = (
+        google_ads_asset_groups.update_google_ads_asset_group_status_by_name(
+            "12345", "ARC_Campaign", ALWAYS_ON_GROUP, "PAUSED"
+        )
+    )
+
+    self.assertFalse(result["success"])
+    self.assertTrue(result["blocked_by_guard"])
+    # The name path must enforce the same guard as the ID path.
+    asset_group_service.mutate_asset_groups.assert_not_called()
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_ambiguous_name_makes_no_change(self, mock_get_client):
+    client, asset_group_service = self._client_returning([
+        _mock_row(2, COLD_GROUP, "PAUSED"),
+        _mock_row(4, COLD_GROUP, "PAUSED"),
+    ])
+    mock_get_client.return_value = client
+
+    result = (
+        google_ads_asset_groups.update_google_ads_asset_group_status_by_name(
+            "12345", "ARC_Campaign", COLD_GROUP, "ENABLED"
+        )
+    )
+
+    self.assertFalse(result["success"])
+    self.assertTrue(result["ambiguous"])
+    asset_group_service.mutate_asset_groups.assert_not_called()
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_missing_name_makes_no_change(self, mock_get_client):
+    client, asset_group_service = self._client_returning([])
+    mock_get_client.return_value = client
+
+    result = (
+        google_ads_asset_groups.update_google_ads_asset_group_status_by_name(
+            "12345", "ARC_Campaign", COLD_GROUP, "ENABLED"
+        )
+    )
+
+    self.assertFalse(result["success"])
+    self.assertIn("No asset group named", result["error"])
+    asset_group_service.mutate_asset_groups.assert_not_called()
+
+  @patch(
+      "agentic_dsta.tools.google_ads.google_ads_asset_groups"
+      ".get_google_ads_client"
+  )
+  def test_invalid_status_rejected_before_api_call(self, mock_get_client):
+    result = (
+        google_ads_asset_groups.update_google_ads_asset_group_status_by_name(
+            "12345", "ARC_Campaign", COLD_GROUP, "REMOVED"
+        )
+    )
+    self.assertFalse(result["success"])
+    self.assertIn("Invalid status", result["error"])
+    mock_get_client.assert_not_called()
+
+
 class TestToolsetRegistration(unittest.TestCase):
 
-  def test_toolset_exposes_both_tools(self):
+  def test_toolset_exposes_all_tools(self):
     toolset = google_ads_asset_groups.GoogleAdsAssetGroupToolset()
     tools = asyncio.run(toolset.get_tools())
-    self.assertEqual(len(tools), 2)
+    self.assertEqual(len(tools), 4)
+
+  def test_toolset_tool_names(self):
+    toolset = google_ads_asset_groups.GoogleAdsAssetGroupToolset()
+    tools = asyncio.run(toolset.get_tools())
+    self.assertCountEqual(
+        [tool.name for tool in tools],
+        [
+            "list_google_ads_asset_groups",
+            "find_google_ads_asset_group_by_name",
+            "update_google_ads_asset_group_status",
+            "update_google_ads_asset_group_status_by_name",
+        ],
+    )
 
 
 if __name__ == "__main__":
