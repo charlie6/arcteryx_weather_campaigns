@@ -34,6 +34,7 @@ from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterTools
 from agentic_dsta.tools.google_ads.google_ads_updater import GoogleAdsUpdaterToolset
 from agentic_dsta.tools.google_ads.google_ads_asset_groups import GoogleAdsAssetGroupToolset
 from agentic_dsta.tools.sa360.sa360_toolset import SA360Toolset
+from agentic_dsta.tools.weather.weather_signals import WeatherSignalsToolset
 
 
 
@@ -86,6 +87,7 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
         GoogleAdsUpdaterToolset(),
         GoogleAdsAssetGroupToolset(),
         DynamicMultiAPIToolset(),
+        WeatherSignalsToolset(),
         FirestoreToolset(),
         SA360Toolset(),
         DateTimeToolset(),
