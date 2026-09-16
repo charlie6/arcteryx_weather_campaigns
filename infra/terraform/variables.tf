@@ -105,7 +105,13 @@ variable "run_sa_roles" {
     "roles/apihub.editor",
     "roles/aiplatform.user",
     "roles/secretmanager.secretAccessor",
-    "roles/run.invoker"
+    "roles/run.invoker",
+    # Required for the container to emit logs and metrics. The default Compute
+    # Engine service account carries Editor, which includes these, so their
+    # absence is easy to miss when moving to a dedicated least-privilege
+    # account: the service runs normally but produces no logs at all.
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter"
   ]
 }
 
