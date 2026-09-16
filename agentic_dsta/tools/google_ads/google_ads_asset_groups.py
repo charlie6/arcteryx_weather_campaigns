@@ -44,6 +44,7 @@ from google.adk.tools.function_tool import FunctionTool
 from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf import field_mask_pb2
 
+from agentic_dsta.core.dry_run import dry_run_response, is_dry_run
 from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client
 
 logger = logging.getLogger(__name__)
@@ -295,6 +296,19 @@ def _perform_status_update(
         "previous_status": previous_status,
         "new_status": normalized_status,
     }
+
+  if is_dry_run():
+    return dry_run_response(
+        "update_asset_group_status",
+        {
+            "customer_id": customer_id,
+            "asset_group_id": asset_group_id,
+            "asset_group_name": asset_group_name,
+            "campaign_id": existing["campaign_id"],
+            "previous_status": previous_status,
+            "new_status": normalized_status,
+        },
+    )
 
   asset_group_service = client.get_service("AssetGroupService")
   asset_group_op = client.get_type("AssetGroupOperation")

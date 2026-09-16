@@ -17,6 +17,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+from agentic_dsta.core.dry_run import dry_run_response, is_dry_run
 from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service, get_reporting_api_client
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
@@ -335,6 +336,20 @@ def _update_campaign_property(
     range_to_update = f"{sheet_name}!{property_column_letter}{row_to_update}"
 
     body = {"values": [[property_value]]}
+
+    if is_dry_run():
+      return dry_run_response(
+          "update_sa360_campaign_property",
+          {
+              "campaign_id": campaign_id,
+              "property_name": property_name,
+              "property_value": property_value,
+              "sheet_id": sheet_id,
+              "sheet_name": sheet_name,
+              "range": range_to_update,
+          },
+      )
+
     sheet.values().update(
         spreadsheetId=sheet_id,
         range=range_to_update,
@@ -448,6 +463,18 @@ def update_sa360_campaign_geolocation(
 
       # Convert dict to list in the correct order for insertion
       new_row_values = [new_row_dict.get(h, "") for h in header]
+
+      if is_dry_run():
+        return dry_run_response(
+            "append_sa360_geo_exclusion_row",
+            {
+                "campaign_id": campaign_id,
+                "location_name": location_name,
+                "sheet_id": sheet_id,
+                "sheet_name": sheet_name,
+                "new_row": new_row_dict,
+            },
+        )
 
       # Append the new row to the sheet
       sheet.values().append(

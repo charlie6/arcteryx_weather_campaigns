@@ -24,6 +24,7 @@ from google.protobuf import field_mask_pb2
 from google.ads.googleads.v22.enums.types.target_impression_share_location import (
     TargetImpressionShareLocationEnum
 )
+from agentic_dsta.core.dry_run import dry_run_response, is_dry_run
 from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client
 from agentic_dsta.tools.google_ads.google_ads_getter import get_google_ads_campaign_details
 from agentic_dsta.tools.google_ads.bidding_strategy_utils import validate_strategy_change
@@ -315,6 +316,17 @@ def update_google_ads_bidding_strategy(
   client.copy_from(campaign_op.update_mask, field_mask_pb2.FieldMask(paths=field_mask_paths))
 
   # 4. Execute the mutation
+  if is_dry_run():
+    return dry_run_response(
+        "update_bidding_strategy",
+        {
+            "customer_id": customer_id,
+            "campaign_id": campaign_id,
+            "strategy_type": strategy_type,
+            "fields_changed": field_mask_paths,
+        },
+    )
+
   try:
     response = campaign_service.mutate_campaigns(
         customer_id=customer_id, operations=[campaign_op]
@@ -381,6 +393,16 @@ def update_google_ads_campaign_status(customer_id: str, campaign_id: str, status
   request = client.get_type("MutateCampaignsRequest")
   request.customer_id = customer_id
   request.operations.append(campaign_op)
+
+  if is_dry_run():
+    return dry_run_response(
+        "update_campaign_status",
+        {
+            "customer_id": customer_id,
+            "campaign_id": campaign_id,
+            "new_status": status,
+        },
+    )
 
   try:
     response = campaign_service.mutate_campaigns(request=request)
@@ -467,6 +489,17 @@ def update_google_ads_campaign_budget(
 
   field_mask = field_mask_pb2.FieldMask(paths=["amount_micros"])
   client.copy_from(campaign_budget_op.update_mask, field_mask)
+
+  if is_dry_run():
+    return dry_run_response(
+        "update_campaign_budget",
+        {
+            "customer_id": customer_id,
+            "campaign_id": campaign_id,
+            "campaign_budget_resource_name": campaign_budget_resource_name,
+            "new_budget_micros": new_budget_micros,
+        },
+    )
 
   try:
     response = campaign_budget_service.mutate_campaign_budgets(
@@ -576,6 +609,19 @@ def update_google_ads_campaign_geo_targets(
   if not operations:
     return {"success": True, "message": "No changes to apply."}
 
+  if is_dry_run():
+    return dry_run_response(
+        "update_campaign_geo_targets",
+        {
+            "customer_id": customer_id,
+            "campaign_id": campaign_id,
+            "location_ids": location_ids,
+            "negative": negative,
+            "criteria_removed": len(remove_operations),
+            "criteria_added": len(add_operations),
+        },
+    )
+
   try:
     response = campaign_criterion_service.mutate_campaign_criteria(
         customer_id=customer_id, operations=operations
@@ -675,6 +721,19 @@ def update_google_ads_ad_group_geo_targets(
   if not operations:
     return {"success": True, "message": "No changes to apply."}
 
+  if is_dry_run():
+    return dry_run_response(
+        "update_ad_group_geo_targets",
+        {
+            "customer_id": customer_id,
+            "ad_group_id": ad_group_id,
+            "location_ids": location_ids,
+            "negative": negative,
+            "criteria_removed": len(remove_operations),
+            "criteria_added": len(add_operations),
+        },
+    )
+
   try:
     response = ad_group_criterion_service.mutate_ad_group_criteria(
         customer_id=customer_id, operations=operations
@@ -734,6 +793,16 @@ def update_google_ads_shared_budget(
 
   field_mask = field_mask_pb2.FieldMask(paths=["amount_micros"])
   client.copy_from(campaign_budget_op.update_mask, field_mask)
+
+  if is_dry_run():
+    return dry_run_response(
+        "update_shared_budget",
+        {
+            "customer_id": customer_id,
+            "budget_resource_name": budget_resource_name,
+            "new_amount_micros": new_amount_micros,
+        },
+    )
 
   try:
     response = campaign_budget_service.mutate_campaign_budgets(
@@ -812,6 +881,17 @@ def update_google_ads_portfolio_bidding_strategy(
   final_mask_paths = sorted(list(set(field_mask_paths)))
 
   client.copy_from(bs_op.update_mask, field_mask_pb2.FieldMask(paths=final_mask_paths))
+
+  if is_dry_run():
+    return dry_run_response(
+        "update_portfolio_bidding_strategy",
+        {
+            "customer_id": customer_id,
+            "bidding_strategy_resource_name": bidding_strategy_resource_name,
+            "strategy_type": strategy_type,
+            "fields_changed": final_mask_paths,
+        },
+    )
 
   try:
     response = bidding_strategy_service.mutate_bidding_strategies(
