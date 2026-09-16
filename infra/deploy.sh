@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#!/bin/bash
 set -e
 
 # Change to the script's directory to ensure relative paths are correct.
@@ -49,8 +48,15 @@ if ! command -v gcloud &> /dev/null; then
     echo "Error: gcloud is not installed."
     exit 1
 fi
-if ! command -v terraform &> /dev/null; then
-    echo "Error: terraform is not installed."
+# Presence alone is not enough: some environments (notably Cloud Shell) ship a
+# stub named "terraform" that prints an install hint and exits 0. That would
+# satisfy "command -v" and let the deployment continue with every Terraform
+# step silently doing nothing. Require real version output instead.
+if ! terraform version 2>/dev/null | grep -q "^Terraform v"; then
+    echo "Error: terraform is not installed or is not runnable."
+    echo "       'terraform version' did not report a version."
+    echo "       On Cloud Shell, install it into a persistent location:"
+    echo "         mkdir -p ~/bin && export PATH=\"\$HOME/bin:\$PATH\""
     exit 1
 fi
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -80,7 +86,18 @@ SA_NAME="${RESOURCE_PREFIX}-deployer"
 TF_STATE_BUCKET="agentic-dsta-tf-state-${PROJECT_ID}"
 IMAGE_NAME="${RESOURCE_PREFIX}-image"
 REPO_NAME="${RESOURCE_PREFIX}-repo"
-TAG="latest"
+# Tag the image by commit so that a code change always produces a new image.
+# A fixed "latest" tag means the existence check below skips the build forever
+# and code changes silently never reach Cloud Run.
+if GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null); then
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    TAG="${GIT_SHA}-dirty-$(date -u +%Y%m%d%H%M%S)"
+  else
+    TAG="${GIT_SHA}"
+  fi
+else
+  TAG="$(date -u +%Y%m%d%H%M%S)"
+fi
 IMAGE_URL="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$TAG"
 
 # ---- Firestore DB Name ---
@@ -306,7 +323,7 @@ else
   echo "   Image not found. Building and pushing container image..."
   # The IMAGE_URL is now constructed above. The build script will run and push to this tag.
   # All output from the build script will be streamed directly to the console.
-  if ! $IMAGE_BUILD_SCRIPT "$PROJECT_ID" "$REGION" "$REPO_NAME" "$IMAGE_NAME"; then
+  if ! $IMAGE_BUILD_SCRIPT "$PROJECT_ID" "$REGION" "$REPO_NAME" "$IMAGE_NAME" "$TAG"; then
       echo "Error: Image build failed."
       exit 1
   fi

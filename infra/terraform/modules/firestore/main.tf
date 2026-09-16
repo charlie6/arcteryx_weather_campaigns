@@ -17,6 +17,12 @@ resource "google_firestore_database" "database" {
   name        = var.database_name
   location_id = var.location_id
   type        = var.database_type
+
+  # Without this the provider default abandons the database on destroy: the
+  # resource leaves Terraform state but the database stays in the project. Any
+  # change that forces replacement (for example changing the region, which
+  # feeds location_id) then fails with "Database already exists".
+  deletion_policy = "DELETE"
 }
 
 

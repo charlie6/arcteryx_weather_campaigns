@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,20 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#!/bin/bash
 set -e
 
-# Usage: ./build_image.sh <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME>
+# Usage: ./build_image.sh <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME> [TAG]
 PROJECT_ID=$1
 REGION=$2
 REPO_NAME=$3
 IMAGE_NAME=$4
-TAG="latest"
+# Optional 5th argument; defaults to "latest" for backwards compatibility.
+TAG=${5:-latest}
 
 if [ -z "$PROJECT_ID" ] || [ -z "$REGION" ] || [ -z "$REPO_NAME" ] || [ -z "$IMAGE_NAME" ]; then
   echo "Error: Missing required arguments."
-  echo "Usage: $0 <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME>"
+  echo "Usage: $0 <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME> [TAG]"
   exit 1
 fi
 
