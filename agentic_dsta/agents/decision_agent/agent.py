@@ -209,10 +209,29 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
     3. Loops through campaigns, creating an isolated agent for each.
 
     Args:
-        customer_id: The customer ID to process.
+        customer_id: The customer ID to process. Accepted either bare
+            ("5341114500") or hyphenated ("534-111-4500"); it is normalised to
+            the bare form before use.
         usecase: Target platform ('GoogleAds' or 'SA360').
     """
     total_start_time = time.perf_counter()
+
+    # The Google Ads UI displays customer IDs hyphenated, so scheduler payloads
+    # and hand-written configs frequently carry that form. Firestore document
+    # IDs and the Google Ads API both require the bare digits, and a mismatch
+    # here fails silently: the instruction lookup misses, the run aborts
+    # cleanly, and the caller still sees success.
+    raw_customer_id = customer_id
+    if customer_id:
+        customer_id = str(customer_id).replace("-", "").strip()
+    if customer_id != raw_customer_id:
+        logger.info(
+            "Normalised customer_id %r to %r",
+            raw_customer_id,
+            customer_id,
+            extra={"customer_id": str(customer_id)},
+        )
+
     logger.info(
         "=== Starting Decision Agent Run: customer_id=%s, usecase=%s ===",
         customer_id,
