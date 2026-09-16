@@ -3,8 +3,15 @@ info:
   title: Google Weather API
   version: v1
   description: |
-    Get daily weather forecasts including conditions, temperature, humidity, precipitation,
-    wind, UV index, and astronomical data for up to 10 days.
+    Get weather forecasts including conditions, temperature, humidity, precipitation,
+    wind, UV index, and astronomical data.
+
+    Two forecast granularities are available:
+      - Daily, for up to 10 days, split into daytime (07:00-19:00 local) and
+        nighttime (19:00-07:00 local) parts.
+      - Hourly, for up to 240 hours from the current hour. Use this when a look-ahead
+        window does not align to calendar-day boundaries, or when precipitation must
+        be accumulated over an exact 24-hour period.
   contact:
     name: Google Maps Platform
     url: https://developers.google.com/maps/documentation/weather
@@ -91,6 +98,123 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DailyForecastResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Access denied - API key lacks required permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /forecast/hours:lookup:
+    get:
+      operationId: getHourlyForecast
+      summary: Get hourly weather forecast
+      description: |
+        Returns hour-by-hour forecast records starting from the current hour, for up to
+        240 hours. Required for any rolling look-ahead window that does not align to
+        calendar-day boundaries, and for accumulating precipitation over an exact
+        24-hour period.
+      parameters:
+        - name: location.latitude
+          in: query
+          required: true
+          description: Latitude coordinate of the location (WGS84)
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+          style: form
+          explode: false
+          example: 49.2827
+
+        - name: location.longitude
+          in: query
+          required: true
+          description: Longitude coordinate of the location (WGS84)
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+          style: form
+          explode: false
+          example: -123.1207
+
+        - name: hours
+          in: query
+          required: false
+          description: |
+            Total hours to fetch starting from the current hour (1-240).
+            Defaults to 240. Use 24 for a single-day look-ahead.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 240
+            default: 240
+          example: 24
+
+        - name: pageSize
+          in: query
+          required: false
+          description: |
+            Records per page (1-24). Defaults to 24. Note that requesting more than
+            24 hours returns paginated results, so nextPageToken must be followed.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 24
+          example: 24
+
+        - name: unitsSystem
+          in: query
+          required: false
+          description: |
+            Units for the response. Defaults to METRIC, which returns Celsius and
+            millimetres - the units the severity thresholds are expressed in.
+          schema:
+            type: string
+            enum: [UNITS_SYSTEM_UNSPECIFIED, IMPERIAL, METRIC]
+            default: METRIC
+          example: METRIC
+
+        - name: languageCode
+          in: query
+          required: false
+          description: IETF BCP-47 language code for localized text. Defaults to "en".
+          schema:
+            type: string
+          example: en
+
+        - name: pageToken
+          in: query
+          required: false
+          description: |
+            Token for accessing the next page of results.
+            Obtained from the nextPageToken field in the previous response.
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: Successful response with hourly forecast data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HourlyForecastResponse'
         '400':
           description: Invalid request parameters
           content:
@@ -233,6 +357,123 @@ components:
           $ref: '#/components/schemas/PrecipitationProbability'
         qpf:
           $ref: '#/components/schemas/QuantitativePrecipitationForecast'
+        snowQpf:
+          allOf:
+            - $ref: '#/components/schemas/QuantitativePrecipitationForecast'
+          description: |
+            The amount of snow accumulated over the period, measured as LIQUID WATER
+            EQUIVALENT rather than snow depth. Roughly a 10:1 ratio applies, so 10 mm
+            here is on the order of 10 cm of snowfall. Severe-snow thresholds must be
+            expressed in the same liquid-equivalent terms.
+
+    HourlyForecastResponse:
+      type: object
+      properties:
+        forecastHours:
+          type: array
+          description: Hourly forecast records, ordered from the current hour onwards
+          items:
+            $ref: '#/components/schemas/ForecastHour'
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+        nextPageToken:
+          type: string
+          description: Token for fetching the next page of results (if available)
+
+    ForecastHour:
+      type: object
+      description: |
+        Forecast for a single one-hour interval. Summing precipitation.qpf or
+        precipitation.snowQpf across the next 24 records yields the rolling 24-hour
+        accumulation used by the severity test.
+      properties:
+        interval:
+          $ref: '#/components/schemas/TimeInterval'
+        displayDateTime:
+          $ref: '#/components/schemas/DateTime'
+        isDaytime:
+          type: boolean
+          description: True if the hour falls between local sunrise and sunset
+        weatherCondition:
+          $ref: '#/components/schemas/WeatherCondition'
+        temperature:
+          $ref: '#/components/schemas/Temperature'
+        feelsLikeTemperature:
+          $ref: '#/components/schemas/Temperature'
+        dewPoint:
+          $ref: '#/components/schemas/Temperature'
+        heatIndex:
+          $ref: '#/components/schemas/Temperature'
+        windChill:
+          $ref: '#/components/schemas/Temperature'
+        wetBulbTemperature:
+          $ref: '#/components/schemas/Temperature'
+        precipitation:
+          $ref: '#/components/schemas/Precipitation'
+        thunderstormProbability:
+          type: integer
+          description: Probability of thunderstorms (0-100)
+        wind:
+          $ref: '#/components/schemas/Wind'
+        cloudCover:
+          type: integer
+          description: Cloud cover percentage (0-100)
+        relativeHumidity:
+          type: integer
+          description: Relative humidity percentage (0-100)
+        uvIndex:
+          type: integer
+          description: UV index (0-11+)
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        airPressure:
+          $ref: '#/components/schemas/AirPressure'
+        iceThickness:
+          $ref: '#/components/schemas/IceThickness'
+
+    DateTime:
+      type: object
+      description: Civil date and time in the local time zone of the location
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+        day:
+          type: integer
+        hours:
+          type: integer
+          description: Hour of day in 24-hour format
+        minutes:
+          type: integer
+        seconds:
+          type: integer
+        nanos:
+          type: integer
+        utcOffset:
+          type: string
+          description: UTC offset in whole seconds, e.g. "-28800s"
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+
+    Visibility:
+      type: object
+      properties:
+        distance:
+          type: number
+          format: double
+          description: Visibility distance in the specified unit
+        unit:
+          type: string
+          enum: [UNIT_UNSPECIFIED, KILOMETERS, MILES]
+
+    AirPressure:
+      type: object
+      properties:
+        meanSeaLevelMillibars:
+          type: number
+          format: double
+          description: Mean sea level air pressure in millibars
 
     PrecipitationProbability:
       type: object
