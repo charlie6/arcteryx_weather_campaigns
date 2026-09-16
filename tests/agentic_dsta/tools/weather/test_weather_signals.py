@@ -32,7 +32,14 @@ VAN_LON = -123.1207
 MODULE = "agentic_dsta.tools.weather.weather_signals"
 
 
-def _hour(rain_mm=0.0, snow_mm=0.0, temp_c=None, condition=None, precip_type=None):
+def _hour(
+    rain_mm=0.0,
+    snow_mm=0.0,
+    temp_c=None,
+    condition=None,
+    precip_type=None,
+    precip_percent=80,
+):
   """Builds a single ForecastHour payload."""
   precipitation = {}
   if rain_mm is not None:
@@ -40,7 +47,10 @@ def _hour(rain_mm=0.0, snow_mm=0.0, temp_c=None, condition=None, precip_type=Non
   if snow_mm is not None:
     precipitation["snowQpf"] = {"quantity": snow_mm, "unit": "MILLIMETERS"}
   if precip_type:
-    precipitation["probability"] = {"percent": 80, "type": precip_type}
+    probability = {"type": precip_type}
+    if precip_percent is not None:
+      probability["percent"] = precip_percent
+    precipitation["probability"] = probability
 
   hour = {"precipitation": precipitation}
   if temp_c is not None:
@@ -276,6 +286,56 @@ class TestPrecipitationPresence(unittest.TestCase):
     mock_get.return_value = _response([_hour(condition="DRIZZLE")])
     result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
     self.assertTrue(result["rain_present"])
+
+  @patch(f"{MODULE}.requests.get")
+  def test_zero_probability_percent_is_not_rain(self, mock_get):
+    """A clear hour must not report rain.
+
+    Observed against the live API: on a clear Vancouver day every hour came
+    back with precipitation.probability.type == "RAIN" and percent == 0,
+    because the type describes what would fall rather than what will. Reading
+    the type alone made rain_present true with zero accumulation.
+    """
+    mock_get.return_value = _response(
+        [_hour(condition="CLEAR", precip_type="RAIN", precip_percent=0)]
+    )
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
+    self.assertFalse(result["rain_present"])
+    self.assertEqual(result["rain_accumulation_mm"], 0.0)
+
+  @patch(f"{MODULE}.requests.get")
+  def test_low_probability_percent_is_not_rain(self, mock_get):
+    mock_get.return_value = _response(
+        [_hour(precip_type="RAIN", precip_percent=20)]
+    )
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
+    self.assertFalse(result["rain_present"])
+
+  @patch(f"{MODULE}.requests.get")
+  def test_missing_probability_percent_is_not_rain(self, mock_get):
+    mock_get.return_value = _response(
+        [_hour(precip_type="RAIN", precip_percent=None)]
+    )
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
+    self.assertFalse(result["rain_present"])
+
+  @patch(f"{MODULE}.requests.get")
+  def test_probability_at_threshold_is_rain(self, mock_get):
+    mock_get.return_value = _response(
+        [_hour(precip_type="RAIN", precip_percent=50)]
+    )
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
+    self.assertTrue(result["rain_present"])
+
+  @patch(f"{MODULE}.requests.get")
+  def test_accumulation_beats_low_probability(self, mock_get):
+    """Measured precipitation always wins over a low stated probability."""
+    mock_get.return_value = _response(
+        [_hour(rain_mm=3.2, precip_type="RAIN", precip_percent=0)]
+    )
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=1)
+    self.assertTrue(result["rain_present"])
+    self.assertEqual(result["rain_accumulation_mm"], 3.2)
 
   @patch(f"{MODULE}.requests.get")
   def test_clear_weather_reports_neither(self, mock_get):

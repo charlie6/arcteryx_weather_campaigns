@@ -96,6 +96,12 @@ _SNOW_PROBABILITY_TYPES = frozenset({"SNOW", "RAIN_AND_SNOW", "FREEZING_RAIN", "
 # precipitation.probability.type values indicating rain.
 _RAIN_PROBABILITY_TYPES = frozenset({"RAIN", "RAIN_AND_SNOW", "FREEZING_RAIN"})
 
+# Minimum precipitation.probability.percent for the probability type to count as
+# evidence of precipitation. The API populates probability.type with the kind of
+# precipitation that *would* fall, and leaves it set even when percent is 0, so
+# reading the type alone reports rain on a clear day.
+_PRECIPITATION_PROBABILITY_THRESHOLD_PERCENT = 50.0
+
 _MM_PER_INCH = 25.4
 
 
@@ -224,6 +230,35 @@ def _fetch_hourly_forecast(
   return collected[:hours]
 
 
+def _probability_indicates(hour: Dict[str, Any], types: frozenset) -> bool:
+  """Reports whether the precipitation probability points at a given type.
+
+  The probability type alone is not sufficient evidence. The API describes the
+  kind of precipitation that would fall if any did, and leaves the field
+  populated when the chance is zero, so a clear day still reports
+  ``type: "RAIN"``. The percentage must therefore also clear a threshold.
+
+  Args:
+      hour: A ForecastHour dictionary.
+      types: The precipitation probability types that count as a match.
+
+  Returns:
+      True if the probability type matches and the percentage is at least
+      ``_PRECIPITATION_PROBABILITY_THRESHOLD_PERCENT``.
+  """
+  probability = (hour.get("precipitation") or {}).get("probability") or {}
+  if probability.get("type") not in types:
+    return False
+
+  try:
+    percent = float(probability.get("percent"))
+  except (TypeError, ValueError):
+    # A missing or non-numeric percentage is not evidence of precipitation.
+    return False
+
+  return percent >= _PRECIPITATION_PROBABILITY_THRESHOLD_PERCENT
+
+
 def _hour_is_snow(hour: Dict[str, Any], snow_mm: float) -> bool:
   """Reports whether an hourly record represents snowfall.
 
@@ -232,8 +267,8 @@ def _hour_is_snow(hour: Dict[str, Any], snow_mm: float) -> bool:
       snow_mm: The already-converted snow accumulation for that hour.
 
   Returns:
-      True if any of the condition type, precipitation type, or a positive snow
-      accumulation indicates snow.
+      True if the snow accumulation is positive, the condition type names snow,
+      or a sufficiently likely snow probability is forecast.
   """
   if snow_mm > 0:
     return True
@@ -242,8 +277,7 @@ def _hour_is_snow(hour: Dict[str, Any], snow_mm: float) -> bool:
   if condition in _SNOW_CONDITION_TYPES:
     return True
 
-  probability = (hour.get("precipitation") or {}).get("probability") or {}
-  return probability.get("type") in _SNOW_PROBABILITY_TYPES
+  return _probability_indicates(hour, _SNOW_PROBABILITY_TYPES)
 
 
 def _hour_is_rain(hour: Dict[str, Any], rain_mm: float) -> bool:
@@ -254,8 +288,8 @@ def _hour_is_rain(hour: Dict[str, Any], rain_mm: float) -> bool:
       rain_mm: The already-converted rain accumulation for that hour.
 
   Returns:
-      True if any of the condition type, precipitation type, or a positive rain
-      accumulation indicates rain.
+      True if the rain accumulation is positive, the condition type names rain,
+      or a sufficiently likely rain probability is forecast.
   """
   if rain_mm > 0:
     return True
@@ -264,8 +298,7 @@ def _hour_is_rain(hour: Dict[str, Any], rain_mm: float) -> bool:
   if condition in _RAIN_CONDITION_TYPES:
     return True
 
-  probability = (hour.get("precipitation") or {}).get("probability") or {}
-  return probability.get("type") in _RAIN_PROBABILITY_TYPES
+  return _probability_indicates(hour, _RAIN_PROBABILITY_TYPES)
 
 
 def get_24h_weather_signals(
