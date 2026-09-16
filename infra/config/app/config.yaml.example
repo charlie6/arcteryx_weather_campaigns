@@ -23,6 +23,8 @@ googleads_customer_id: "GOOGLE_ADS_CUSTOMER_ID"
 
 # Auth and MCC Configuration
 google_ads_force_user_creds: "true"
+# The manager (MCC) account used for the login-customer-id header. Leave blank
+# to fall back to the target customer ID. Dashes are stripped automatically.
 google_ads_login_customer_id: "YOUR_MCC_CUSTOMER_ID"
 
 #SA360 Customer ID to be triggered from cloud scheduler
