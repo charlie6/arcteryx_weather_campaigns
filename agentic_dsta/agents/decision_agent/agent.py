@@ -32,6 +32,7 @@ from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
 from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterToolset
 from agentic_dsta.tools.google_ads.google_ads_updater import GoogleAdsUpdaterToolset
+from agentic_dsta.tools.google_ads.google_ads_asset_groups import GoogleAdsAssetGroupToolset
 from agentic_dsta.tools.sa360.sa360_toolset import SA360Toolset
 
 
@@ -83,6 +84,7 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
     tools = [
         GoogleAdsGetterToolset(),
         GoogleAdsUpdaterToolset(),
+        GoogleAdsAssetGroupToolset(),
         DynamicMultiAPIToolset(),
         FirestoreToolset(),
         SA360Toolset(),

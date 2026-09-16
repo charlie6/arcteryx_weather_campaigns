@@ -102,3 +102,9 @@ dmypy.json
 
 # Session database
 sessions.db
+
+# macOS
+.DS_Store
+
+# Local reference documents
+*.docx
