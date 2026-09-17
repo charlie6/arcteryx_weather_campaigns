@@ -56,6 +56,32 @@ Cold baselines are the mean daily minimum temperature. That definition is not
 assumed: it is validated against the three baselines published in the
 specification, and the run fails if it cannot reproduce them.
 
+Severity percentiles
+--------------------
+Means alone cannot drive a severity rule. Backtesting the specification's
+absolute floors over this same 30-year record showed two failures that only a
+per-city distribution can fix:
+
+*   The floors almost never bind inland. Saskatoon reaches 45 mm of rain about
+    once every thirty-three years, so the rain trigger effectively does not
+    exist there.
+*   The cold rule, ``winter mean minus 5 C``, is roughly a 0.5 sigma anomaly.
+    It fires on 31 days a year in Saskatoon -- about one winter day in three --
+    which is a seasonal budget increase rather than a severe-weather response.
+
+So alongside the means this job emits per-city percentiles: rain p98 and snow
+p95 over event days, and the p2 of daily minimum temperature. A percentile is
+the operational definition of "unusual here", and because it is defined on the
+city's own distribution it yields a near-uniform trigger rate across a
+climatically diverse footprint -- measured at 1.4x spread between the most and
+least triggered market, against 10.2x for the absolute floors.
+
+Percentiles pool all months. Seasonal pooling was considered and rejected for
+now: a 48 mm July day in Vancouver is exceptional on the same terms as a 48 mm
+January day, and monthly pooling thins each bucket enough to make the tail
+estimate noisy.
+
+
 Usage:
     python3 build_climate_baselines.py --out-dir ./baselines_out
     python3 build_climate_baselines.py --cities "Vancouver BC,Calgary AB"
@@ -86,9 +112,43 @@ DEFAULT_END_DATE = "2020-12-31"
 # is load-bearing rather than cosmetic.
 WET_DAY_THRESHOLD_MM = 1.0
 
-# Open-Meteo reports snowfall in centimetres at a fixed 7:1 ratio, so this
-# factor converts to millimetres of liquid water equivalent.
-SNOW_CM_TO_MM_SWE = 0.7
+# Open-Meteo reports snowfall in centimetres of snow depth at a fixed 7:1
+# snow-to-liquid convention: 7 cm of snow corresponds to 10 mm of liquid water.
+#
+# The direction matters and is easy to invert. An earlier revision multiplied
+# by 0.7, which understated every snow baseline by a factor of 2.04 and would
+# have halved the effective severe-snow threshold the moment the absolute floor
+# stopped dominating. Converting centimetres of snow to millimetres of water
+# DIVIDES by 0.7, equivalently multiplies by 10/7.
+#
+# Verified empirically against `precipitation_sum` on snow-only days, where
+# `snowfall_sum / precipitation_sum` measures 0.73-0.75:
+#
+#   Saskatoon 2013-03-15: 4.48 cm snow, 6.10 mm precipitation -> 0.734
+#   Saskatoon 2013-01-24: 3.78 cm snow, 5.10 mm precipitation -> 0.741
+#   Saskatoon 2013-02-26: 2.52 cm snow, 3.40 mm precipitation -> 0.741
+#
+# Expressed as a ratio rather than a bare multiplier so the intended direction
+# is legible at the call site.
+OPEN_METEO_SNOW_TO_LIQUID_RATIO = 7.0
+MM_SWE_PER_CM_SNOW = 10.0 / OPEN_METEO_SNOW_TO_LIQUID_RATIO
+
+# Percentiles defining a severe day, chosen for the trigger rate they produce
+# rather than for statistical neatness. Measured over 1991-2020 across the
+# footprint, these yield roughly 1-3 rain days, 0-2 snow days and 7-8 cold days
+# per city per year: frequent enough to be worth automating, rare enough that
+# each firing is defensible to an advertiser.
+#
+# Rain and snow percentiles are taken over *event* days only. Including dry
+# days would drag both percentiles to zero in every city, since most days in
+# most months have no precipitation at all.
+RAIN_SEVERE_PERCENTILE = 98.0
+SNOW_SEVERE_PERCENTILE = 95.0
+
+# Cold is taken over every day of the year, not just cold ones. There is no
+# equivalent of a "dry day" to exclude, and the bottom tail of the full annual
+# distribution is exactly the quantity of interest.
+COLD_SEVERE_PERCENTILE = 2.0
 
 DAILY_VARIABLES = (
     "precipitation_sum",
@@ -286,6 +346,42 @@ def _mean(values: Sequence[float]) -> Optional[float]:
   return statistics.fmean(values) if values else None
 
 
+def _percentile(values: Sequence[float], percentile: float) -> Optional[float]:
+  """Returns a linearly interpolated percentile of the given values.
+
+  Implemented directly rather than via ``statistics.quantiles`` so that an
+  arbitrary percentile can be requested without first partitioning the data
+  into n buckets, and so the interpolation behaviour is explicit and testable.
+
+  Args:
+      values: The sample. Need not be sorted. May be empty.
+      percentile: The percentile to compute, from 0 to 100 inclusive.
+
+  Returns:
+      The interpolated percentile, or None when the sample is empty.
+
+  Raises:
+      ValueError: If percentile is outside the range 0 to 100.
+  """
+  if not 0.0 <= percentile <= 100.0:
+    raise ValueError(f"percentile must be within 0..100, got {percentile!r}")
+  if not values:
+    return None
+
+  ordered = sorted(values)
+  if len(ordered) == 1:
+    return ordered[0]
+
+  # Index into the sorted sample, then interpolate between the two
+  # neighbouring observations. A single observation short-circuits above so
+  # that `upper` can never run past the end.
+  position = (len(ordered) - 1) * percentile / 100.0
+  lower = int(position)
+  upper = min(lower + 1, len(ordered) - 1)
+  fraction = position - lower
+  return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+
 def compute_city_baselines(
     city: Dict[str, Any], daily: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -315,6 +411,12 @@ def compute_city_baselines(
   }
   years_seen = set()
 
+  # Severity percentiles pool the whole year; see the module docstring for why
+  # they are not computed per month.
+  annual_rain_events: List[float] = []
+  annual_snow_events: List[float] = []
+  annual_tmin: List[float] = []
+
   for i, date_str in enumerate(dates):
     month = int(date_str[5:7])
     years_seen.add(int(date_str[:4]))
@@ -322,15 +424,23 @@ def compute_city_baselines(
 
     rain = daily["rain_sum"][i]
     if rain is not None:
-      bucket["rain"].append(float(rain))
+      rain = float(rain)
+      bucket["rain"].append(rain)
+      if rain >= WET_DAY_THRESHOLD_MM:
+        annual_rain_events.append(rain)
 
     snow_cm = daily["snowfall_sum"][i]
     if snow_cm is not None:
-      bucket["snow_swe"].append(float(snow_cm) * SNOW_CM_TO_MM_SWE)
+      snow_swe = float(snow_cm) * MM_SWE_PER_CM_SNOW
+      bucket["snow_swe"].append(snow_swe)
+      if snow_swe >= WET_DAY_THRESHOLD_MM:
+        annual_snow_events.append(snow_swe)
 
     tmin = daily["temperature_2m_min"][i]
     if tmin is not None:
-      bucket["tmin"].append(float(tmin))
+      tmin = float(tmin)
+      bucket["tmin"].append(tmin)
+      annual_tmin.append(tmin)
 
   year_count = max(len(years_seen), 1)
   months: Dict[str, Any] = {}
@@ -384,6 +494,50 @@ def compute_city_baselines(
         "implausibly low; suspect source gaps encoded as zero"
     )
 
+  # Severity thresholds, plus the trigger rate each one implies. The rate is
+  # recorded because it, not the threshold, is the number a human can sanity
+  # check: "1.1 severe rain days a year" is reviewable in a way that "24.1 mm"
+  # is not.
+  rain_severe = _percentile(annual_rain_events, RAIN_SEVERE_PERCENTILE)
+  snow_severe = _percentile(annual_snow_events, SNOW_SEVERE_PERCENTILE)
+  cold_severe = _percentile(annual_tmin, COLD_SEVERE_PERCENTILE)
+
+  def _rate(values: Sequence[float], threshold: Optional[float],
+            below: bool = False) -> Optional[float]:
+    """Days per year meeting a threshold, or None when undefined."""
+    if threshold is None:
+      return None
+    if below:
+      hits = sum(1 for v in values if v <= threshold)
+    else:
+      hits = sum(1 for v in values if v >= threshold)
+    return round(hits / year_count, 2)
+
+  severe = {
+      "rain_mm": round(rain_severe, 1) if rain_severe is not None else None,
+      "rain_percentile": RAIN_SEVERE_PERCENTILE,
+      "rain_days_per_year": _rate(annual_rain_events, rain_severe),
+      "snow_mm_swe": round(snow_severe, 1) if snow_severe is not None else None,
+      "snow_percentile": SNOW_SEVERE_PERCENTILE,
+      "snow_days_per_year": _rate(annual_snow_events, snow_severe),
+      "cold_c": round(cold_severe, 1) if cold_severe is not None else None,
+      "cold_percentile": COLD_SEVERE_PERCENTILE,
+      "cold_days_per_year": _rate(annual_tmin, cold_severe, below=True),
+  }
+
+  # A city that can never fire is the failure this whole percentile approach
+  # exists to prevent, so say so loudly rather than emitting a null.
+  if severe["snow_mm_swe"] is None:
+    warnings.append(
+        "no qualifying snow days in the record; the snow trigger will never "
+        "fire for this city"
+    )
+  if severe["rain_mm"] is None:
+    warnings.append(
+        "no qualifying wet days in the record; the rain trigger will never "
+        "fire for this city"
+    )
+
   return {
       "city": city["city"],
       "account": city["account"],
@@ -397,6 +551,7 @@ def compute_city_baselines(
       "annual_snow_mm_swe": round(annual_snow_swe, 1),
       "months": months,
       "seasons": seasons,
+      "severe": severe,
       "warnings": warnings,
   }
 
@@ -512,6 +667,23 @@ def render_firestore_documents(
                 for season, values in record["seasons"].items()
             },
             "coldBaselineProvisional": True,
+            # The thresholds the severity rule should compare against
+            # directly. These replace the "mean, then subtract a margin"
+            # construction, which produced a 0.5 sigma cold trigger firing on
+            # a third of all winter days. Each threshold carries the
+            # percentile that defined it and the historical trigger rate it
+            # implies, so the rule can be audited without re-deriving it.
+            "severeThresholds": {
+                "rainMm": record["severe"]["rain_mm"],
+                "rainPercentile": record["severe"]["rain_percentile"],
+                "rainDaysPerYear": record["severe"]["rain_days_per_year"],
+                "snowMmSwe": record["severe"]["snow_mm_swe"],
+                "snowPercentile": record["severe"]["snow_percentile"],
+                "snowDaysPerYear": record["severe"]["snow_days_per_year"],
+                "coldC": record["severe"]["cold_c"],
+                "coldPercentile": record["severe"]["cold_percentile"],
+                "coldDaysPerYear": record["severe"]["cold_days_per_year"],
+            },
             "warnings": record["warnings"],
         },
     })
@@ -553,6 +725,44 @@ def render_markdown(baselines: List[Dict[str, Any]]) -> str:
         f"| {fmt(jan['snow_mm_swe_per_snow_day'])} "
         f"| {record['annual_rain_mm']:.0f} "
         f"| {len(record['warnings']) or ''} |"
+    )
+
+  # The trigger rate column is the point of this second table. A threshold in
+  # millimetres is hard to review; "fires 1.1 times a year" is not, and a row
+  # reading 0.0 is the defect that motivated percentiles in the first place.
+  lines += [
+      "",
+      "## Severity thresholds",
+      "",
+      f"Rain p{RAIN_SEVERE_PERCENTILE:g} and snow p{SNOW_SEVERE_PERCENTILE:g} "
+      f"over event days; cold p{COLD_SEVERE_PERCENTILE:g} over all days.",
+      "",
+      "| City | Rain (mm) | /yr | Snow (mm SWE) | /yr | Cold (C) | /yr |"
+      " Total/yr |",
+      "|---|---:|---:|---:|---:|---:|---:|---:|",
+  ]
+
+  def fmt1(value: Optional[float], sign: bool = False) -> str:
+    if value is None:
+      return "-"
+    return f"{value:+.1f}" if sign else f"{value:.1f}"
+
+  for record in sorted(baselines, key=lambda r: (r["account"], r["city"])):
+    severe = record["severe"]
+    total = sum(
+        severe[key] or 0.0
+        for key in ("rain_days_per_year", "snow_days_per_year",
+                    "cold_days_per_year")
+    )
+    lines.append(
+        f"| {record['city']} "
+        f"| {fmt1(severe['rain_mm'])} "
+        f"| {fmt1(severe['rain_days_per_year'])} "
+        f"| {fmt1(severe['snow_mm_swe'])} "
+        f"| {fmt1(severe['snow_days_per_year'])} "
+        f"| {fmt1(severe['cold_c'], sign=True)} "
+        f"| {fmt1(severe['cold_days_per_year'])} "
+        f"| {total:.1f} |"
     )
 
   flagged = [r for r in baselines if r["warnings"]]
