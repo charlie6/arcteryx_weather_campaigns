@@ -22,7 +22,6 @@ logging.basicConfig(
 from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterToolset
 from agentic_dsta.tools.google_ads.google_ads_updater import GoogleAdsUpdaterToolset
 from agentic_dsta.tools.google_ads.google_ads_asset_groups import GoogleAdsAssetGroupToolset
-from agentic_dsta.tools.api_hub.apihub_toolset import DynamicMultiAPIToolset
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from agentic_dsta.tools.sa360.sa360_toolset import SA360Toolset
 from agentic_dsta.tools.weather.weather_signals import WeatherSignalsToolset
@@ -44,7 +43,6 @@ root_agent = agents.LlmAgent(
         GoogleAdsGetterToolset(),
         GoogleAdsUpdaterToolset(),
         GoogleAdsAssetGroupToolset(),
-        DynamicMultiAPIToolset(),
         WeatherSignalsToolset(),
         FirestoreToolset(),
         SA360Toolset(),

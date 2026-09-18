@@ -122,7 +122,6 @@ gcloud services enable \
   cloudresourcemanager.googleapis.com \
   iam.googleapis.com \
   storage.googleapis.com \
-  apihub.googleapis.com \
   firestore.googleapis.com \
   secretmanager.googleapis.com \
   aiplatform.googleapis.com \
@@ -133,9 +132,6 @@ gcloud services enable \
   searchads360.googleapis.com \
   sheets.googleapis.com \
   --project="$PROJECT_ID"
-
-echo "--- Ensuring API Hub Service Identity exists ---"
-gcloud beta services identity create --service=apihub.googleapis.com --project="$PROJECT_ID" 2>/dev/null || true
 
 echo "--- Ensuring deployment Service Account '$SA_NAME' exists and has permissions ---"
 
@@ -174,7 +170,6 @@ ROLES=(
   "roles/firebase.admin"
   "roles/resourcemanager.projectIamAdmin"
   "roles/iam.serviceAccountAdmin"
-  "roles/apihub.admin"
 )
 
 for role in "${ROLES[@]}"; do

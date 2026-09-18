@@ -77,17 +77,9 @@ module "secret_manager" {
   depends_on = [google_project_service.apis]
 }
 
-module "apihub" {
-  source          = "./modules/apihub"
-  project_id      = var.project_id
-  location        = var.region
-  specs_dir       = "${path.module}/${var.apihub_specs_dir}"
-  vertex_location = var.apihub_vertex_location
-  account_email   = google_service_account.run_sa.email
-  access_token    = var.access_token
-
-  depends_on = [google_project_service.apis]
-}
+# NOTE: The API Hub module was removed. External signals are now fetched by
+# calling weather.googleapis.com directly from WeatherSignalsToolset, so the
+# dynamic API discovery layer is no longer needed.
 
 
 

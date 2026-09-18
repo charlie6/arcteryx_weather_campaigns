@@ -88,7 +88,6 @@ variable "enabled_apis" {
     "compute.googleapis.com",
     "secretmanager.googleapis.com",
     "firestore.googleapis.com",
-    "apihub.googleapis.com",
     "aiplatform.googleapis.com",
     "iap.googleapis.com",
     "googleads.googleapis.com",
@@ -102,7 +101,6 @@ variable "run_sa_roles" {
   type        = list(string)
   default = [
     "roles/datastore.user",
-    "roles/apihub.editor",
     "roles/aiplatform.user",
     "roles/secretmanager.secretAccessor",
     "roles/run.invoker",
@@ -165,7 +163,6 @@ variable "gcp_apis" {
     "compute.googleapis.com",
     "secretmanager.googleapis.com",
     "firestore.googleapis.com",
-    "apihub.googleapis.com",
     "aiplatform.googleapis.com",
     "iap.googleapis.com",
     "googleads.googleapis.com",
@@ -191,13 +188,6 @@ variable "artifact_repository_format" {
   description = "The format of the Artifact Registry repository"
   type        = string
   default     = "DOCKER"
-}
-
-# --- API Hub Variables ---
-variable "apihub_specs_dir" {
-  description = "Path to the directory containing OpenAPI specs for API Hub"
-  type        = string
-  default     = "../config/specs"
 }
 
 # --- Cloud Run Variables ---
@@ -294,11 +284,6 @@ variable "sa360_customer_id" {
 
 # --- Secrets ---
 # Secrets are now managed by the deploy.sh script and read directly by the secret_manager module
-variable "apihub_vertex_location" {
-  description = "The multi-region for API Hub Vertex AI Search data (e.g., 'us' or 'eu')."
-  type        = string
-  default     = "us"
-}
 
 variable "additional_secrets" {
   description = "A list of additional secret names to be created and managed for custom APIs."

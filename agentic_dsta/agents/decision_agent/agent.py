@@ -27,7 +27,6 @@ from google.adk import runners
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 
-from agentic_dsta.tools.api_hub.apihub_toolset import DynamicMultiAPIToolset
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
 from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterToolset
@@ -86,7 +85,6 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
         GoogleAdsGetterToolset(),
         GoogleAdsUpdaterToolset(),
         GoogleAdsAssetGroupToolset(),
-        DynamicMultiAPIToolset(),
         WeatherSignalsToolset(),
         FirestoreToolset(),
         SA360Toolset(),
@@ -352,8 +350,8 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
 
         **Task:**
         1. Analyze the current situation for Campaign {campaign_id}.
-        2. Check if any external factors (Weather, POLLEN, AQI etc) are relevant based on the instructions.
-           If so, use the API Hub tools to fetch that data.
+        2. Check if weather conditions are relevant based on the instructions.
+           If so, use the weather signal tools to fetch that data.
         3. Check the campaign's current performance/status using GoogleAds tools for GoogleAds campaigns.
         4. Decide on an action (Pause, Enable, Change Bid, Change Location, or No Action).
         5. Execute the action if necessary.

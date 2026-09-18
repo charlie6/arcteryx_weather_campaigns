@@ -24,7 +24,6 @@ firestore_database_type = "FIRESTORE_NATIVE"
 
 # The ID of the API Hub instance
 # Default: "default-instance"
-apihub_instance_id = "your-apihub-instance-id"
 
 # =============================================================================
 # Scheduler Configuration
