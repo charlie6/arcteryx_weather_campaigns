@@ -157,6 +157,22 @@ async def scheduler_init_and_run(request: Request):
             detail="Missing customer_id (or user_id) in payload."
         )
 
+    # The Google Ads UI shows customer IDs hyphenated ("534-111-4500"), so
+    # scheduler payloads built from a copy-paste carry that form. Firestore
+    # document IDs and the Google Ads API both require bare digits. Normalise
+    # at the boundary so the webhook's own logs match what the agent actually
+    # looks up; a mismatch here previously surfaced only as a "Document not
+    # found" warning followed by a misleading "completed successfully".
+    raw_customer_id = customer_id
+    customer_id = str(customer_id).replace("-", "").strip()
+    if customer_id != raw_customer_id:
+        logger.info(
+            "Scheduler: normalised customer_id %r to %r",
+            raw_customer_id,
+            customer_id,
+            extra={"customer_id": customer_id},
+        )
+
     logger.info(
         "Scheduler: Triggering decision_agent for customer_id=%s (usecase=%s)",
         customer_id,
