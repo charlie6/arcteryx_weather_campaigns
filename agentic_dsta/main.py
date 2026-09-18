@@ -43,9 +43,21 @@ get_fast_api_app = fast_api.get_fast_api_app
 
 # Get the directory where main.py is located
 AGENTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents")
-# Use an in-memory SQLite database for sessions to avoid file locking issues in
-# a scaled environment.
-SESSION_SERVICE_URI = "sqlite:///:memory:"
+# Keep sessions in process memory, avoiding file locking in a scaled environment.
+#
+# This must NOT be "sqlite:///:memory:". google-adk 2.x added a dedicated
+# SqliteSessionService, and the registry routes any sqlite:// URI that has a
+# path to it -- ":memory:" counts as a path. That service opens a new
+# connection per operation, and every connection to ":memory:" gets its own
+# private database. It creates the schema on the first connection, caches
+# `_schema_ready = True`, then closes the connection and discards the database,
+# so the next operation finds an empty one and skips the CREATE TABLE:
+#
+#     sqlite3.OperationalError: no such table: sessions
+#
+# "memory://" is the registered scheme for InMemorySessionService, which is
+# what the sqlite in-memory URI was always trying to express.
+SESSION_SERVICE_URI = "memory://"
 # Example allowed origins for CORS
 # For production environments, it is recommended to use a more restrictive list of allowed origins.
 ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8080"]
