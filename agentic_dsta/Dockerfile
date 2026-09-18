@@ -20,6 +20,11 @@ USER myuser
 
 ENV PATH="/home/myuser/.local/bin:$PATH"
 ENV GOOGLE_CLOUD_LOCATION="us-central1"
+# Cloud Run runs in us-central1, but no Gemini 3.x model is served from any
+# single US region. Model calls go to the `us` multi-region endpoint
+# (https://aiplatform.us.rep.googleapis.com). Set to "global" to trade US data
+# residency for the widest capacity pool.
+ENV GEMINI_LOCATION="us"
 ENV GOOGLE_GENAI_USE_VERTEXAI="True"
 ENV PYTHONUNBUFFERED=1
 

@@ -190,6 +190,32 @@ variable "artifact_repository_format" {
   default     = "DOCKER"
 }
 
+# --- Gemini Model Variables ---
+variable "gemini_model" {
+  description = "Gemini model ID used by the decision and marketing agents."
+  type        = string
+  default     = "gemini-3.5-flash"
+}
+
+variable "gemini_location" {
+  description = <<-EOT
+    Vertex AI serving location for Gemini calls. Deliberately separate from
+    `region`: Cloud Run runs in a single region (us-central1), but no Gemini 3.x
+    model is served from any single US region, and gemini-3.5-flash only offers
+    pay-as-you-go on the `global`, `us`, and `eu` endpoints.
+
+    Use "us" to keep ML processing in the United States, or "global" for the
+    widest capacity pool at the cost of residency guarantees.
+  EOT
+  type        = string
+  default     = "us"
+
+  validation {
+    condition     = contains(["us", "eu", "global"], var.gemini_location)
+    error_message = "gemini_location must be one of: us, eu, global. Single-region values such as us-central1 do not serve Gemini 3.x models."
+  }
+}
+
 # --- Cloud Run Variables ---
 variable "run_service_default_image_url" {
   description = "Default image URL to use for Cloud Run if image_url is not provided."

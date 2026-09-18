@@ -107,6 +107,11 @@ module "cloud_run_service" {
   env_vars = merge(var.run_service_env_vars, {
     GOOGLE_CLOUD_PROJECT          = var.project_id
     GOOGLE_CLOUD_LOCATION         = var.region
+    # Kept separate from var.region on purpose: Cloud Run runs in us-central1,
+    # but no Gemini 3.x model is served from a single US region, so model calls
+    # must target the `us` multi-region (or `global`) endpoint.
+    GEMINI_LOCATION               = var.gemini_location
+    GEMINI_MODEL                  = var.gemini_model
     FIRESTORE_DB                  = local.firestore_database_name
     GOOGLE_ADS_FORCE_USER_CREDS = var.google_ads_force_user_creds
     SA360_FORCE_USER_CREDS      = var.sa360_force_user_creds

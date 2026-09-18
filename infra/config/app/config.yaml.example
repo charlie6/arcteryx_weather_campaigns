@@ -14,6 +14,13 @@ firestore_database_type: "FIRESTORE_NATIVE"
 googleads_scheduler_schedule: "5 10 * * *"
 sa360_scheduler_schedule: "5 10 * * *"
 
+# Gemini model configuration.
+# gemini_location is NOT the Cloud Run region. Cloud Run stays in `region`
+# (e.g. us-central1), but Gemini 3.x models are only served from the `us`, `eu`,
+# and `global` endpoints -- never from a single US region.
+gemini_model: "gemini-3.5-flash"
+gemini_location: "us"
+
 additional_secrets: ["GOOGLE_API_KEY"]
 #  - MY_CUSTOM_API_KEY
 #  - ANOTHER_API_SECRET

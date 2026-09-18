@@ -1,11 +1,27 @@
 functions-framework==3.*
-google-cloud-aiplatform[agent_engines,adk,langchain,ag2,llama_index]>=1.112.0
+# The langchain, ag2 and llama_index extras were dropped. Nothing in this
+# codebase imports LangChain, AutoGen or LlamaIndex -- they were boilerplate
+# from the agent-starter-pack template -- and the langchain extra pins
+# langchain-google-genai<4.2.3, every release of which requires
+# google-genai<2.0.0. That directly contradicts google-adk>=2.9, which requires
+# google-genai>=2.19, and makes the dependency set unresolvable.
+#
+# The >=1.160.0 floor matters too: the `adk` extra caps google-adk<2.0.0 up to
+# and including 1.155.0, and only widens to <3.0.0 in 1.160.0.
+google-cloud-aiplatform[agent_engines,adk]>=1.160.0,<2
 a2a-sdk>=0.3.4
 requests
 google
 google-ads
-google-adk
-google-adk[eval]
+# google-adk >=2.0 is required for Gemini 3.x: it adds the `client` field on
+# Gemini (replacing post-construction api_client assignment), thinking_config
+# handling, and gemini-3 awareness. 1.17.0 has none of these.
+google-adk>=2.9,<3
+google-adk[eval]>=2.9,<3
+# google-genai >=2.19 is required for the `us`/`eu` multi-region endpoints
+# (_MULTI_REGIONAL_LOCATIONS -> https://aiplatform.us.rep.googleapis.com).
+# 1.52.0 would build https://us-aiplatform.googleapis.com and fail.
+google-genai>=2.19,<3
 google-cloud-firestore
 google-auth-oauthlib
 python-dotenv

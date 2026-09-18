@@ -39,10 +39,29 @@ from agentic_dsta.tools.weather.weather_signals import WeatherSignalsToolset
 
 logger = logging.getLogger(__name__)
 
-# Default model, can be overridden
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# Default model, can be overridden.
+#
+# gemini-2.5-flash retires on 2026-10-20. gemini-3.5-flash is the GA successor
+# (retirement 2027-05-19 or later).
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION")
+
+# The Gemini serving location is deliberately separate from GOOGLE_CLOUD_LOCATION.
+#
+# GOOGLE_CLOUD_LOCATION is the Cloud Run region (us-central1) and is also used
+# for Firestore and other regional resources. No Gemini 3.x model is served from
+# any single US region, and for gemini-3.5-flash pay-as-you-go is only offered on
+# the `global`, `us`, and `eu` endpoints. So the model call has to target a
+# multi-region endpoint even though the service itself stays in us-central1.
+#
+# `us` keeps ML processing inside the United States. Switch to `global` if you
+# would rather trade residency for the widest capacity pool (fewer 429s).
+GEMINI_LOCATION = (
+    os.environ.get("GEMINI_LOCATION")
+    or os.environ.get("GOOGLE_CLOUD_LOCATION")
+    or "us"
+)
+LOCATION = GEMINI_LOCATION
 
 
 def get_current_datetime() -> Dict[str, Any]:
@@ -94,11 +113,15 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
     client = Client(
         vertexai=True,
         project=PROJECT_ID,
-        location=LOCATION
+        location=LOCATION,
     )
 
-    configured_model = Gemini(model=model)
-    configured_model.api_client = client
+    # Pass the client through the `client` field rather than assigning to
+    # `model.api_client` after construction. In google-adk 2.x, Gemini is a
+    # Pydantic model and `api_client` is a cached_property that returns
+    # `self.client` when set; assigning over the property is no longer the
+    # supported path.
+    configured_model = Gemini(model=model, client=client)
 
     return agents.LlmAgent(
         name="decision_agent",
