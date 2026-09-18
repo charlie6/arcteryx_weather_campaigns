@@ -1,0 +1,129 @@
+[
+  {
+    "collection_name": "ClimateBaselines",
+    "document_id": "Vancouver BC",
+    "data": {
+      "city": "Vancouver BC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 49.2827,
+      "longitude": -123.1207,
+      "timezone": "America/Vancouver",
+      "gridElevationM": 40.0,
+      "source": "ERA5 via Open-Meteo archive",
+      "wetDayThresholdMm": 1.0,
+      "snowUnits": "mm water equivalent",
+      "yearsCovered": 30,
+      "monthlyRainMmPerWetDay": {
+        "1": 15.01,
+        "2": 10.71,
+        "3": 11.79,
+        "4": 9.78,
+        "5": 9.06,
+        "6": 7.95,
+        "7": 7.32,
+        "8": 9.67,
+        "9": 11.28,
+        "10": 14.71,
+        "11": 16.61,
+        "12": 13.73
+      },
+      "monthlySnowMmSwePerSnowDay": {
+        "1": 6.5,
+        "2": 6.21,
+        "3": 5.4,
+        "4": 3.83,
+        "5": 2.0,
+        "6": null,
+        "7": null,
+        "8": null,
+        "9": null,
+        "10": 5.07,
+        "11": 5.51,
+        "12": 7.33
+      },
+      "monthlyWetDays": {
+        "1": 16.93,
+        "2": 13.97,
+        "3": 18.0,
+        "4": 16.5,
+        "5": 12.3,
+        "6": 11.13,
+        "7": 6.73,
+        "8": 7.37,
+        "9": 10.3,
+        "10": 16.07,
+        "11": 19.17,
+        "12": 17.37
+      },
+      "monthlySnowDays": {
+        "1": 5.13,
+        "2": 4.4,
+        "3": 4.1,
+        "4": 0.83,
+        "5": 0.07,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.07,
+        "11": 2.47,
+        "12": 6.5
+      },
+      "seasonalColdBaselineC": {
+        "winter": 1.5,
+        "spring": 5.6,
+        "summer": 13.7,
+        "autumn": 8.3
+      },
+      "coldBaselineProvisional": true,
+      "severeThresholds": {
+        "rainMm": 48.0,
+        "rainPercentile": 98.0,
+        "rainDaysPerYear": 3.33,
+        "snowMmSwe": 16.9,
+        "snowPercentile": 95.0,
+        "snowDaysPerYear": 1.53,
+        "coldC": -3.9,
+        "coldPercentile": 2.0,
+        "coldDaysPerYear": 7.47
+      },
+      "warnings": []
+    }
+  },
+  {
+    "collection_name": "CustomerInstructions",
+    "document_id": "5341114500",
+    "data": {
+      "instruction": "You manage Arc'teryx weather-triggered Performance Max campaigns in a sandbox account. Every decision must be justified by a numeric weather signal you actually retrieved.\n\nNON-NEGOTIABLE SAFETY RULES:\n1. NEVER pause an always-on asset group. The asset group tools enforce this; if a tool returns blocked_by_guard, accept it and move on. Do not attempt a workaround.\n2. Only ever change asset groups whose names contain '_WEATHER_'. Asset groups such as 'Arcteryx_AO_Core' and 'Arcteryx_Evergreen_Hiking' are out of scope and must be left untouched.\n3. Bidding is Maximise Conversion Value with a target ROAS. NEVER change the bidding strategy and NEVER set, alter or remove the target ROAS.\n4. Budget changes are capped at +50% of the campaign's normal daily budget. Never stack increases. If several conditions qualify on the same day the increase is still 50% total.\n5. If any weather tool returns success=false, or hours_received is less than hours_requested, make NO changes and report the failure. Never guess a weather value.\n6. Report every action you take with the weather number that caused it."
+    }
+  },
+  {
+    "collection_name": "GoogleAdsConfig",
+    "document_id": "5341114500",
+    "data": {
+      "customerId": 5341114500,
+      "logincustomerid": "9560465107",
+      "instruction": "Arc'teryx weather-triggered PMax sandbox test. Vancouver signals against the ADSTA test campaign.",
+      "campaigns": [
+        {
+          "campaignId": 24252893412,
+          "instruction": "*** DRY RUN MODE: This is a validation run. Perform ALL analysis and state exactly which tool calls you WOULD make with which arguments, but DO NOT call any update_ or set_ tool. Read-only tools (get_, list_, find_) are allowed and expected. ***\n\nTASK: weather asset group activation.\n\nSTEP 1 - Get the forecast.\nCall get_24h_weather_signals with latitude 49.2827 and longitude -123.1207.\nIf success is false, stop and report. If hours_received < hours_requested, stop and report.\n\nSTEP 2 - Decide which weather asset group should be live.\nEvaluate in this exact order and pick the FIRST match:\n  - SNOW: snow_accumulation_mm >= 1.0\n  - RAIN: rain_accumulation_mm >= 2.0\n  - NONE: otherwise\n\nSTEP 3 - Apply it.\nThe campaign name is 'ADSTA Weather PMax Test'.\nAsset group names are:\n  SNOW -> Arcteryx_WEATHER_Snow\n  RAIN -> Arcteryx_WEATHER_Rain\nFirst call list_google_ads_asset_groups to see what actually exists and its current status.\nThen use update_google_ads_asset_group_status_by_name to set the matching asset group to ENABLED and the other weather asset group to PAUSED.\nThe asset groups 'Arcteryx_AO_Core' and 'Arcteryx_Evergreen_Hiking' are NOT weather asset groups. Do not enable, pause or otherwise touch them, and do not include them in your plan.\nIf the outcome is NONE, pause both weather asset groups.\n"
+        },
+        {
+          "campaignId": 24252893412,
+          "instruction": "*** DRY RUN MODE: This is a validation run. Perform ALL analysis and state exactly which tool calls you WOULD make with which arguments, but DO NOT call any update_ or set_ tool. Read-only tools (get_, list_, find_) are allowed and expected. ***\n\nTASK: severe weather budget adjustment.\n\nSTEP 1 - Get the forecast.\nCall get_24h_weather_signals with latitude 49.2827 and longitude -123.1207.\nIf success is false, or hours_received < hours_requested, stop and make no change.\n\nSTEP 2 - Get the severity thresholds.\nCall get_document on collection 'ClimateBaselines', document_id 'Vancouver BC'.\nRead the severeThresholds map:\n  severeThresholds.rainMm      -> severe rain threshold, mm\n  severeThresholds.snowMmSwe   -> severe snow threshold, mm water equivalent\n  severeThresholds.coldC       -> severe cold threshold, Celsius\nThese are absolute thresholds, already derived from 30 years of history for this city. Compare against them DIRECTLY. Do NOT multiply them, do not add or subtract a margin, and do not derive a threshold from any monthly average. If severeThresholds is missing from the document, stop and report; do not fall back to the monthly baselines.\n\nSTEP 3 - Severity test.\n  RAIN severe : rain_accumulation_mm >= severeThresholds.rainMm\n  SNOW severe : snow_accumulation_mm >= severeThresholds.snowMmSwe\n  COLD severe : min_temperature_c    <= severeThresholds.coldC\nA null threshold means that signal can never fire for this city; treat it as not severe rather than as zero.\nHot and warm conditions NEVER qualify for a budget change.\n\nSTEP 4 - Apply.\nIf any condition is severe, call get_google_ads_campaign_details to read the current daily budget, then update_google_ads_campaign_budget to 1.5x the NORMAL budget.\nIMPORTANT: if the current budget is already elevated, do NOT multiply it again. The normal budget for this campaign is 1.00 in account currency; the severe budget is therefore 1.50.\nIf nothing is severe and the budget is currently 1.50, set it back to 1.00.\nDo NOT change the bidding strategy or the target ROAS.\nReport which test passed, quoting both the observed value and the threshold it was compared against.\n"
+        }
+      ],
+      "locations": [
+        {
+          "city": "Vancouver",
+          "latitude": 49.2827,
+          "longitude": -123.1207,
+          "timezone": "America/Vancouver",
+          "geoTargetCode": "1002250"
+        }
+      ]
+    }
+  }
+]
