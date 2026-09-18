@@ -949,6 +949,7 @@ google-api-core[grpc]==2.34.0 \
     # via
     #   a2a-sdk
     #   google-ads
+    #   google-api-python-client
     #   google-cloud-aiplatform
     #   google-cloud-appengine-logging
     #   google-cloud-bigquery
@@ -956,14 +957,21 @@ google-api-core[grpc]==2.34.0 \
     #   google-cloud-firestore
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
     #   google-cloud-storage
     #   google-cloud-texttospeech
+google-api-python-client==2.200.0 \
+    --hash=sha256:82aa18b851328ea04867fd51c5a0c8da2e1b86ec45ce08487e902e7726d4ee50 \
+    --hash=sha256:c0c2c4072a110b7fcc30ac151744d4410cddaba99c53cb4e815463308952b638
+    # via -r requirements.in
 google-auth[pyopenssl,requests]==2.58.0 \
     --hash=sha256:55e30cf15e737de92c5323d78cda8a83fcd57e7ffbaf900c4600039fd60a80fd \
     --hash=sha256:8a9c4645bb4c8e91668fb1934b95ae6a8687084232753639220ba9bf04a1610d
     # via
     #   google-adk
     #   google-api-core
+    #   google-api-python-client
+    #   google-auth-httplib2
     #   google-auth-oauthlib
     #   google-cloud-aiplatform
     #   google-cloud-appengine-logging
@@ -972,9 +980,14 @@ google-auth[pyopenssl,requests]==2.58.0 \
     #   google-cloud-firestore
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
     #   google-cloud-storage
     #   google-cloud-texttospeech
     #   google-genai
+google-auth-httplib2==0.4.2 \
+    --hash=sha256:4298dd6b1415972d0c464b7177e6a69a595e7aec5b972222ecdca342f6009647 \
+    --hash=sha256:916225a6367e613c9af44d83f41688a599d3f687777846b8b91bec65085ed1f1
+    # via google-api-python-client
 google-auth-oauthlib==1.4.1 \
     --hash=sha256:1a83f5f2a8421dedadaa3caf25b3a710dddf85a33a63144be41c2fc79174b106 \
     --hash=sha256:a1be43ec69fe563ac9b2c4d6fc4334b323b21cbdc59a638b5fa34dd4d5a2a348
@@ -1021,6 +1034,10 @@ google-cloud-resource-manager==1.18.0 \
     --hash=sha256:69bab144acd75878ebe44b720903dc3d140cb7d3be3261eaa8bc81e48afaff33 \
     --hash=sha256:db689f800a14c66d041196a7fbb8bb8aae8dc87f28c2929e101a5ec766b15512
     # via google-cloud-aiplatform
+google-cloud-secret-manager==2.30.0 \
+    --hash=sha256:0f285e77d09a73700e3fca9abbc77f844a50276989bf76d64a76b6e2b871e396 \
+    --hash=sha256:26ec87737731b483f7f95c26a8c7ab79e22cb66317c95006e7f6985dbc43c8a2
+    # via -r requirements.in
 google-cloud-storage==3.14.1 \
     --hash=sha256:8f0fe2b74bd80ddcbd67247a3b47b81035a0a4f448569ed358fa40a46c940118 \
     --hash=sha256:b24e74b493c60b19b83462933a83bb831e45b6ca4924b0d75eac8e176b58b3a7
@@ -1100,6 +1117,7 @@ grpc-google-iam-v1==0.14.5 \
     # via
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
 grpcio==1.84.0 \
     --hash=sha256:026d757df86c5b7a41de8200b9a2cda454aaa5004cb0c7e3374c66eb82f61499 \
     --hash=sha256:06619ba1515e5ee69fb2a514e95dd8be05ce74cb3928d5b34f87f87c86fe3c27 \
@@ -1169,6 +1187,7 @@ grpcio==1.84.0 \
     #   google-cloud-firestore
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
     #   google-cloud-texttospeech
     #   googleapis-common-protos
     #   grpc-google-iam-v1
@@ -1214,6 +1233,12 @@ httpcore==1.0.9 \
     --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55 \
     --hash=sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8
     # via httpx
+httplib2==0.32.0 \
+    --hash=sha256:48a0ef30a42db65d8f3399045e1d09ab0ba66e3b9efc360d07f80ea55d286025 \
+    --hash=sha256:dc6705cacdf3fb0a2aba7629fa33c90fd93e30035db0c157325826be177e4816
+    # via
+    #   google-api-python-client
+    #   google-auth-httplib2
 httpx==0.28.1 \
     --hash=sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
@@ -2044,6 +2069,7 @@ proto-plus==1.28.4 \
     #   google-cloud-firestore
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
     #   google-cloud-texttospeech
 protobuf==6.33.6 \
     --hash=sha256:0cd27b587afca21b7cfa59a74dcbd48a50f0a6400cfb59391340ad729d91d326 \
@@ -2066,6 +2092,7 @@ protobuf==6.33.6 \
     #   google-cloud-firestore
     #   google-cloud-logging
     #   google-cloud-resource-manager
+    #   google-cloud-secret-manager
     #   google-cloud-texttospeech
     #   googleapis-common-protos
     #   grpc-google-iam-v1
@@ -2221,6 +2248,10 @@ pygments==2.21.0 \
     --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9 \
     --hash=sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c
     # via pytest
+pyparsing==3.3.2 \
+    --hash=sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d \
+    --hash=sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc
+    # via httplib2
 pytest==9.1.1 \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
@@ -2885,6 +2916,10 @@ typing-inspection==0.4.4 \
     # via
     #   fastapi
     #   pydantic
+uritemplate==4.2.0 \
+    --hash=sha256:480c2ed180878955863323eea31b0ede668795de182617fef9c6ca09e6ec9d0e \
+    --hash=sha256:962201ba1c4edcab02e60f9a0d3821e82dfc5d2d6662a21abd533879bdb8a686
+    # via google-api-python-client
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63

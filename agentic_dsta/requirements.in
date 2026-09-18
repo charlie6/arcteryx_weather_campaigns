@@ -23,6 +23,15 @@ google-adk[eval]>=2.9,<3
 # 1.52.0 would build https://us-aiplatform.googleapis.com and fail.
 google-genai>=2.19,<3
 google-cloud-firestore
+# Declared explicitly because this code imports them directly:
+#   google.cloud.secretmanager -> tools/auth_utils.py
+#   googleapiclient            -> tools/auth_utils.py, tools/sa360/*
+# Until now they were only ever installed as transitive dependencies of
+# google-adk 1.x. google-adk 2.x dropped both from its dependency set, which
+# broke the container at import time. A direct import must always have a direct
+# declaration; relying on another package's transitive graph is not a contract.
+google-cloud-secret-manager
+google-api-python-client
 google-auth-oauthlib
 python-dotenv
 setuptools==80.9.0
