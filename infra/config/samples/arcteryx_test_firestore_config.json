@@ -84,7 +84,83 @@
     "collection_name": "CustomerInstructions",
     "document_id": "1234567890",
     "data": {
-      "instruction": "You manage Arc'teryx weather-triggered Performance Max campaigns for the Canada account. Every decision must be justified by a numeric weather signal you actually retrieved. \n\nNON-NEGOTIABLE SAFETY RULES:\n1. NEVER pause an always-on asset group. The asset group tools enforce this; if a tool returns blocked_by_guard, accept it and move on. Do not attempt a workaround.\n2. Only ever change asset groups whose names contain 'Weather'.\n3. Bidding is Maximise Conversions. NEVER set, alter or remove a target ROAS or change the bidding strategy.\n4. Budget changes are capped at +50% of the campaign's normal daily budget. Never stack increases. If several conditions qualify on the same day the increase is still 50% total.\n5. If any weather tool returns success=false, or hours_received is less than hours_requested, make NO changes and report the failure. Never guess a weather value.\n6. Report every action you take with the weather number that caused it."
+      "instruction": "You manage Arc'teryx weather-triggered Performance Max campaigns. Every decision must be\njustified by a numeric weather signal you actually retrieved.\n\nNON-NEGOTIABLE SAFETY RULES:\n1. NEVER pause an always-on asset group. The asset group tools enforce this; if a tool returns\n   blocked_by_guard, accept it and move on. Do not attempt a workaround.\n2. Only ever change asset groups that the tools report as managed weather asset groups.\n3. Bidding is Maximise Conversions. NEVER set, alter or remove a target ROAS or change the\n   bidding strategy. Daily budget is the only budget lever in scope.\n4. Never change campaign status. Campaigns remain enabled at all times.\n5. If any weather tool returns success=false, or hours_received is less than hours_requested,\n   follow your playbook's failure path. Never guess a weather value.\n6. Never hardcode or assume coordinates, campaign names or asset group names. Resolve them from\n   Firestore and from the Google Ads API at run time.\n7. Report every action you take with the weather number that caused it.\n8. Append a row to Firestore collection 'ChangeLog' for every decision, including the decisions\n   that changed nothing.\n"
+    }
+  },
+  {
+    "collection_name": "WeatherConditions",
+    "document_id": "default",
+    "data": {
+      "_comment": "Shared activation rules from spec section 3.2. These are the same for every city; per-campaign severity thresholds live in the campaign's params.severeModifiers. Changing a threshold here changes it everywhere.",
+      "lookAheadHours": 24,
+      "trailingWindowHours": 24,
+      "conditions": [
+        {
+          "name": "Cold",
+          "assetGroupToken": "_COLD_",
+          "test": "min_temperature_c < 9.0",
+          "severityEligible": true
+        },
+        {
+          "name": "Rain",
+          "assetGroupToken": "_RAIN_",
+          "test": "max_rain_rate_mm_per_h >= 0.2 AND rain_present is true",
+          "severityEligible": true
+        },
+        {
+          "name": "Snow",
+          "assetGroupToken": "_SNOW_",
+          "test": "snow_present is true",
+          "severityEligible": true
+        },
+        {
+          "name": "Warm",
+          "assetGroupToken": "_SUN_",
+          "test": "max_temperature_c > 10.0",
+          "severityEligible": false
+        }
+      ]
+    }
+  },
+  {
+    "collection_name": "Playbooks",
+    "document_id": "weather_asset_groups",
+    "data": {
+      "description": "Advance weather triggering, spec section 4. Enables and pauses weather asset groups from a forward-looking forecast, with a trailing window.",
+      "requiredParams": [
+        "city"
+      ],
+      "defaults": {
+        "geo": "(unset)",
+        "campaignNameContains": null
+      },
+      "template": "MODE: live writes are controlled in code by the ADSTA_DRY_RUN environment variable, not by\nthis prompt. Call the tools you judge correct. If a tool returns dry_run=true the write was\nsuppressed: treat it as 'would have applied', record mode 'log-only' in the change log, and do\nNOT record the change as applied in state. Do not retry a suppressed write.\n\nTASK: advance weather triggering (spec section 4) for campaign {{campaignId}}.\nAccount: {{account}}. Weather location: {{city}}. Geo token: {{geo}}.\n\nRUN CONTEXT - already resolved, do not recompute:\n  Run id                : {{runId}}\n  Today (UTC)           : {{today}}\n  Today (account local) : {{todayLocal}} [{{timezone}}]\n  Timestamp (UTC)       : {{nowIsoUtc}}\n  Timestamp (local)     : {{nowIsoLocal}}\n  Look-ahead window     : {{lookAheadHours}} hours\n  Trailing window       : {{trailingWindowHours}} hours = the last {{trailingWindowRuns}} run(s)\n\nSTEP 1 - Resolve coordinates.\nCall get_document on collection 'ClimateBaselines', document_id '{{city}}'.\nRead latitude and longitude from that document. Never assume or recall coordinates.\nIf the document does not exist, or either coordinate is missing, treat this as a weather\nfailure and go straight to STEP 6.\n\nSTEP 2 - Forecast.\nCall get_24h_weather_signals with the latitude and longitude from STEP 1 and hours\n{{lookAheadHours}}.\nIf success is false, or hours_received is less than hours_requested, go to STEP 6.\n\nSTEP 3 - Evaluate every condition INDEPENDENTLY.\nDo NOT stop at the first match. More than one condition can be true at the same time, for\nexample Cold and Snow together during a cold snowstorm, and each has its own asset group.\n{{conditionsTable}}\nFor each condition record whether it is active in this look-ahead, together with the observed\nvalue and the threshold you compared it against.\n\nSTEP 4 - Apply the trailing window.\nCall get_document on collection 'AssetGroupState', document_id '{{assetGroupStateDocId}}'.\nField conditionHistory maps each condition name to runsSinceLastSeen and currentStatus.\nIf the document does not exist, treat every condition as never seen.\nFor each condition:\n  - Active in STEP 3              -> runsSinceLastSeen = 0, target status ENABLED\n  - Not active, but seen before   -> runsSinceLastSeen = previous value + 1.\n                                     Target ENABLED while runsSinceLastSeen is less than or\n                                     equal to {{trailingWindowRuns}}, otherwise PAUSED.\n  - Never seen                    -> target PAUSED\nThis is what keeps an asset group live for a further {{trailingWindowHours}} hours after the\ncondition leaves the look-ahead. It is only paused once neither this run nor the previous\n{{trailingWindowRuns}} run(s) saw the condition.\n\nSTEP 5 - Apply to the account.\nCall list_google_ads_asset_groups(customer_id '{{customerId}}', campaign_id '{{campaignId}}').\nMatch asset groups to conditions using the token listed in STEP 3, comparing upper-cased names.\n  - If {{campaignNameContains}} is not null, verify that the returned campaign_name contains\n    that text. If it does not, make NO changes and report a naming mismatch: the campaign may\n    have been renamed, or the config may point at the wrong campaign.\n  - If a condition matches no asset group, skip that condition and note it. Never invent a name.\n  - If a condition matches more than one asset group, make NO change for that condition and\n    report the ambiguity.\n  - Never touch an asset group whose can_be_paused is false or whose is_always_on is true. The\n    always-on group stays enabled before, during and after the event.\nCall update_google_ads_asset_group_status_by_name only for groups whose current status differs\nfrom the target status. Do not issue no-op writes. Then go to STEP 7.\n\nSTEP 6 - Weather failure fallback.\nThe forecast for this location is unusable. Per spec section 7, fall back to always-on:\n  - Call list_google_ads_asset_groups and PAUSE every managed weather asset group for this\n    campaign, meaning those whose can_be_paused is true. Leave the always-on group running.\n  - Make no budget change of any kind.\n  - Reset conditionHistory so that no condition is treated as recently seen.\n  - Use notes 'weather API failure - fell back to always-on', then continue to STEP 7 and 8.\n\nSTEP 7 - Persist state.\nCall set_document on 'AssetGroupState' / '{{assetGroupStateDocId}}' with merge true, writing\nconditionHistory (runsSinceLastSeen and currentStatus per condition), lastRunId '{{runId}}' and\nlastRunAt '{{nowIsoUtc}}'.\nIf a status update returned dry_run=true then the account did not change: record the status you\nobserved, not the status you intended.\n\nSTEP 8 - Change log. Always write one row per condition evaluated, even when nothing changed.\nCall set_document on collection 'ChangeLog', document_id\n'{{today}}_{{campaignId}}_<condition>_{{runId}}', with:\n  runId '{{runId}}', timestampUtc '{{nowIsoUtc}}', timestampLocal '{{nowIsoLocal}}',\n  account '{{account}}', customerId '{{customerId}}', campaignId '{{campaignId}}',\n  campaignName (as returned by the API, never from config), weatherLocation '{{city}}',\n  condition, assetGroupName, assetGroupAction ('enabled', 'paused' or 'no change'),\n  severityMet false, triggerDetail (the observed value and the threshold),\n  budgetBeforeMicros 'unchanged', budgetAfterMicros 'unchanged',\n  mode ('live' or 'log-only') and notes.\n\nRULES\n- Never change campaign status. Campaigns remain enabled at all times.\n- Never change the bidding strategy, and never set, alter or remove a target ROAS.\n- Never change a budget in this playbook.\n- Never pause an always-on asset group. If a tool returns blocked_by_guard, accept it and move\n  on. Do not attempt a workaround.\n- Report each condition with the observed value and the threshold it was compared against.\n"
+    }
+  },
+  {
+    "collection_name": "Playbooks",
+    "document_id": "severe_budget",
+    "data": {
+      "description": "Severe weather budget adjustment, spec section 5. Raises the daily budget when an event is materially worse than the seasonal norm, then reverts.",
+      "requiredParams": [
+        "city",
+        "severeModifiers.severeRainMm",
+        "severeModifiers.severeSnowMm",
+        "severeModifiers.severeColdMarginC",
+        "severeModifiers.relativeMultiplier",
+        "severeModifiers.budgetBumpPct"
+      ],
+      "defaults": {
+        "geo": "(unset)",
+        "campaignNameContains": null,
+        "maxConsecutiveDays": 5,
+        "rollingWindowDays": 30,
+        "maxIncreasedDaysInWindow": 10,
+        "severeModifiers": {
+          "maxDailyBudgetMicros": null
+        }
+      },
+      "template": "MODE: live writes are controlled in code by the ADSTA_DRY_RUN environment variable, not by\nthis prompt. Call the tools you judge correct. If a tool returns dry_run=true the write was\nsuppressed: treat it as 'would have applied', record mode 'log-only' in the change log, and do\nNOT record the change as applied in state. Do not retry a suppressed write.\n\nTASK: severe weather budget adjustment (spec section 5) for campaign {{campaignId}}.\nAccount: {{account}}. Weather location: {{city}}. Geo token: {{geo}}.\n\nRUN CONTEXT - already resolved, do not recompute:\n  Run id                : {{runId}}\n  Today (UTC)           : {{today}}\n  Today (account local) : {{todayLocal}} [{{timezone}}]\n  Timestamp (UTC)       : {{nowIsoUtc}}\n  Timestamp (local)     : {{nowIsoLocal}}\n  Current month number  : {{currentMonth}}\n  Current season        : {{season}}\n  Look-ahead window     : {{lookAheadHours}} hours\n  State document        : 'CampaignBudgetState' / '{{budgetStateDocId}}'\n\nSEVERE MODIFIERS for this campaign:\n  Absolute rain floor   : {{severeModifiers.severeRainMm}} mm per 24h\n  Absolute snow floor   : {{severeModifiers.severeSnowMm}} mm water equivalent per 24h\n  Cold margin           : {{severeModifiers.severeColdMarginC}} C below the seasonal baseline\n  Relative multiplier   : {{severeModifiers.relativeMultiplier}} times the monthly baseline\n  Budget bump           : {{severeModifiers.budgetBumpPct}} percent\n  Optional ceiling      : {{severeModifiers.maxDailyBudgetMicros}} micros (null means no ceiling)\n  Max consecutive days  : {{maxConsecutiveDays}}\n  Rolling window        : {{maxIncreasedDaysInWindow}} increased days per {{rollingWindowDays}} days\n\nSTEP 1 - Resolve coordinates and baselines.\nCall get_document on collection 'ClimateBaselines', document_id '{{city}}'. From that one\ndocument read:\n  latitude, longitude                 coordinates for the forecast call\n  monthlyRainMmPerWetDay[{{currentMonth}}]   rain baseline, mm\n  monthlySnowMmSwePerSnowDay[{{currentMonth}}]  snow baseline, mm water equivalent\n  seasonalColdBaselineC.{{season}}     cold baseline, Celsius\nNever assume coordinates or baselines. If the document does not exist, or either coordinate is\nmissing, make NO change, log notes 'missing ClimateBaselines document' and stop.\nIf a baseline needed for one condition is missing or null, that condition cannot qualify: treat\nit as not severe, log a warning, and carry on with the others.\n\nSTEP 2 - Forecast.\nCall get_24h_weather_signals with the latitude and longitude from STEP 1 and hours\n{{lookAheadHours}}.\nIf success is false, or hours_received is less than hours_requested: make NO budget change. If\nan increase is currently active, LEAVE IT IN PLACE and let the clock continue, because\nreverting on a transient failure and re-applying next run would create churn. Write a change\nlog row with notes 'weather API failure' and stop.\n\nSTEP 3 - Severity test. Rain and snow require BOTH a relative and an absolute test to pass, so\na wet month cannot trigger an increase on a trivial amount of rain.\n  RAIN severe : rain_accumulation_mm >= {{severeModifiers.relativeMultiplier}} * rain baseline\n                AND rain_accumulation_mm >= {{severeModifiers.severeRainMm}}\n  SNOW severe : snow_accumulation_mm >= {{severeModifiers.relativeMultiplier}} * snow baseline\n                AND snow_accumulation_mm >= {{severeModifiers.severeSnowMm}}\n  COLD severe : min_temperature_c <= (cold baseline - {{severeModifiers.severeColdMarginC}})\nHot and warm conditions NEVER qualify for a budget change.\nSEVERE is true if any single test passes. Increases never stack: if several conditions qualify\non the same day the increase is still {{severeModifiers.budgetBumpPct}} percent in total.\n\nSTEP 4 - Read the live budget. Two calls, in this order.\n  a. get_google_ads_campaign_details(customer_id '{{customerId}}', campaign_id '{{campaignId}}')\n     and read the campaignBudget field, which is the budget resource name. Also read the\n     campaign name for the change log. If {{campaignNameContains}} is not null, verify the\n     campaign name contains that text; if it does not, make NO change and report a naming\n     mismatch.\n  b. list_google_ads_shared_budgets(customer_id '{{customerId}}', budget_resource_name = that\n     resource name) and read amountMicros from the single budget returned. Call this LIVE_BUDGET.\nget_google_ads_campaign_details does NOT return the budget amount. Call (b) as well; do not\ninfer the amount from anywhere else.\n\nSTEP 5 - Read state.\nCall get_document on 'CampaignBudgetState' / '{{budgetStateDocId}}'. Fields used:\n  normalBudgetMicros      the budget to return to\n  increaseActive          whether an increase is currently applied\n  increaseStartDate       date the current increase began\n  increaseDayNumber       which day of the {{maxConsecutiveDays}}-day window this is\n  lastAppliedBudgetMicros the elevated amount this logic last wrote\n  increasedDays           list of YYYY-MM-DD dates on which an increase was applied\nIf the document does not exist, create it with normalBudgetMicros = LIVE_BUDGET,\nincreaseActive false, increaseDayNumber 0, increasedDays [], then continue.\nIf the document exists but normalBudgetMicros is missing, make NO change, log notes\n'missing normal budget - alert' and stop. Do not guess a value.\n\nSTEP 6 - Decide. Evaluate in this order and take the FIRST case that applies.\n  A. increaseActive is true AND LIVE_BUDGET != lastAppliedBudgetMicros\n     A person changed the budget by hand and the human decision wins. Adopt the live value:\n     normalBudgetMicros = LIVE_BUDGET, increaseActive false, increaseDayNumber 0. Make NO budget\n     call. Notes 'manual override detected'.\n  B. increaseActive is true AND increaseDayNumber >= {{maxConsecutiveDays}}\n     Maximum duration reached. Call update_google_ads_campaign_budget with\n     new_budget_micros = normalBudgetMicros. Set increaseActive false, increaseDayNumber 0.\n  C. increaseActive is true AND SEVERE is false\n     Event no longer qualifies. Revert exactly as in case B.\n  D. increaseActive is true AND SEVERE is true\n     Still qualifying and inside the window. The budget is already elevated, so make NO budget\n     call. Set increaseDayNumber = increaseDayNumber + 1 and add TODAY to increasedDays if absent.\n  E. increaseActive is false AND SEVERE is true\n     New event. First check the rolling cap: count the entries in increasedDays falling in the\n     trailing {{rollingWindowDays}} days including TODAY. If that count is\n     {{maxIncreasedDaysInWindow}} or more, make NO change and note 'rolling\n     {{rollingWindowDays}}-day cap reached'. Otherwise:\n       TARGET = normalBudgetMicros * (1 + {{severeModifiers.budgetBumpPct}} / 100)\n       if the optional ceiling is not null and TARGET > ceiling, TARGET = ceiling\n     Compute TARGET from normalBudgetMicros, NEVER from LIVE_BUDGET, so an increase can never\n     compound across runs. Call update_google_ads_campaign_budget(customer_id '{{customerId}}',\n     campaign_id '{{campaignId}}', new_budget_micros = TARGET). Set increaseActive true,\n     increaseStartDate TODAY, increaseDayNumber 1, lastAppliedBudgetMicros TARGET, and add TODAY\n     to increasedDays.\n  F. Otherwise, no change.\n\nSTEP 7 - Persist state.\nCall set_document on 'CampaignBudgetState' / '{{budgetStateDocId}}' with merge true, writing\nnormalBudgetMicros, increaseActive, increaseStartDate, increaseDayNumber,\nlastAppliedBudgetMicros, increasedDays (dropping entries older than {{rollingWindowDays}} days)\nand lastRunDate '{{today}}'.\nIf the budget call returned dry_run=true the account did not change: do NOT set increaseActive\ntrue, do NOT add TODAY to increasedDays, and do NOT change lastAppliedBudgetMicros.\n\nSTEP 8 - Change log. Always write one row, whether or not anything changed.\nCall set_document on collection 'ChangeLog', document_id\n'{{today}}_{{campaignId}}_budget_{{runId}}', with:\n  runId '{{runId}}', timestampUtc '{{nowIsoUtc}}', timestampLocal '{{nowIsoLocal}}',\n  account '{{account}}', customerId '{{customerId}}', campaignId '{{campaignId}}',\n  campaignName (as returned by the API, never from config), weatherLocation '{{city}}',\n  condition (Cold, Rain, Snow or None), assetGroupAction 'no change', severityMet,\n  triggerDetail (every test you ran, each with the observed value and the threshold it was\n  compared against), budgetBeforeMicros, budgetAfterMicros (or 'unchanged'), increaseDayNumber,\n  increasedDaysInTrailing{{rollingWindowDays}}, mode ('live' or 'log-only') and notes.\n\nRULES\n- Never change the bidding strategy and never set, alter or remove a target ROAS. Daily budget\n  is the only lever in scope.\n- Never change campaign status, and never touch asset groups in this playbook.\n- Report which test passed, quoting both the observed value and the threshold.\n"
     }
   },
   {
@@ -92,27 +168,125 @@
     "document_id": "1234567890",
     "data": {
       "customerId": 1234567890,
-      "logincustomerid": "REPLACE_WITH_MCC_ID",
-      "instruction": "Arc'teryx Canada weather-triggered PMax. Vancouver pilot only.",
+      "loginCustomerId": "REPLACE_WITH_MCC_ID",
+      "account": "Canada",
+      "instruction": "Arc'teryx Canada weather-triggered PMax.",
+      "schedule": {
+        "timezone": "America/Toronto",
+        "runsPerDay": 2,
+        "runHours": [
+          6,
+          18
+        ]
+      },
+      "notifications": {
+        "summaryRecipients": [
+          "REPLACE_WITH_TEAM_ALIAS@example.com"
+        ]
+      },
+      "changeVolumeGuard": {
+        "enabled": true,
+        "maxFractionOfEligibleCampaigns": 0.25
+      },
+      "weatherConditionsId": "default",
       "campaigns": [
         {
           "campaignId": 1111111111,
-          "instruction": "*** DRY RUN MODE: This is a validation run. Perform ALL analysis and state exactly which tool calls you WOULD make with which arguments, but DO NOT call any update_ or set_ tool. Read-only tools (get_, list_, find_) are allowed and expected. ***\n\nTASK: weather asset group activation.\n\nSTEP 1 - Get the forecast.\nCall get_24h_weather_signals with latitude 49.2827 and longitude -123.1207.\nIf success is false, stop and report. If hours_received < hours_requested, stop and report.\n\nSTEP 2 - Decide which weather asset group should be live.\nUse these signals from step 1. Evaluate in this exact order and pick the FIRST match:\n  - SNOW:  snow_accumulation_mm >= 1.0\n  - RAIN:  rain_accumulation_mm >= 2.0\n  - COLD:  min_temperature_c <= -3.0\n  - NONE:  otherwise\n\nSTEP 3 - Apply it.\nThe campaign name is 'ARC_Performance_Weather_PMax_CAN_CA_ENG_VAN_Brand_AO'.\nAsset group names are:\n  SNOW -> ARC_Weather_Snow_VAN_ENG_Neutral_Null_FW25\n  RAIN -> ARC_Weather_Rain_VAN_ENG_Neutral_Null_FW25\n  COLD -> ARC_Weather_Cold_VAN_ENG_Neutral_Null_FW25\nFirst call list_google_ads_asset_groups to see what actually exists and its current status.\nThen use update_google_ads_asset_group_status_by_name to set the matching asset group to\nENABLED and every OTHER weather asset group to PAUSED. Leave any always-on asset group\ncompletely alone - do not even attempt to pause it.\nIf the outcome is NONE, pause all three weather asset groups.\n"
+          "playbooks": [
+            "weather_asset_groups",
+            "severe_budget"
+          ],
+          "params": {
+            "city": "Vancouver BC",
+            "geo": "VAN",
+            "campaignNameContains": "VAN",
+            "severeModifiers": {
+              "severeRainMm": 45.0,
+              "severeSnowMm": 10.0,
+              "severeColdMarginC": 5.0,
+              "relativeMultiplier": 1.5,
+              "budgetBumpPct": 50,
+              "maxDailyBudgetMicros": 200000000
+            }
+          }
         },
         {
-          "campaignId": 2222222222,
-          "instruction": "*** DRY RUN MODE: This is a validation run. Perform ALL analysis and state exactly which tool calls you WOULD make with which arguments, but DO NOT call any update_ or set_ tool. Read-only tools (get_, list_, find_) are allowed and expected. ***\n\nTASK: severe weather budget adjustment.\n\nSTEP 1 - Get the forecast.\nCall get_24h_weather_signals with latitude 49.2827 and longitude -123.1207.\nIf success is false, or hours_received < hours_requested, stop and make no change.\n\nSTEP 2 - Get the baseline for the current month.\nCall get_document on collection 'ClimateBaselines', document_id 'Vancouver BC'.\nUse get_current_datetime to find the current month number. Read:\n  monthlyRainMmPerWetDay[month]      -> rain baseline, mm\n  monthlySnowMmSwePerSnowDay[month]  -> snow baseline, mm water equivalent\n  seasonalColdBaselineC.winter       -> cold baseline, Celsius\n\nSTEP 3 - Severity test. A budget increase requires BOTH tests to pass.\n  RAIN severe  : rain_accumulation_mm >= 1.5 * rain baseline\n                 AND rain_accumulation_mm >= 45.0\n  SNOW severe  : snow_accumulation_mm >= 1.5 * snow baseline\n                 AND snow_accumulation_mm >= 10.0\n  COLD severe  : min_temperature_c <= (cold baseline - 5.0)\nHot and warm conditions NEVER qualify for a budget change.\n\nSTEP 4 - Apply.\nIf any condition is severe, call get_google_ads_campaign_details to read the current daily\nbudget, then update_google_ads_campaign_budget to 1.5x the NORMAL budget.\nIMPORTANT: if the current budget is already elevated, do NOT multiply it again. The normal\nbudget for this campaign is 100.00 in account currency; the severe budget is therefore 150.00.\nIf nothing is severe and the budget is currently 150.00, set it back to 100.00.\nReport which test passed with the actual numbers.\n"
-        }
-      ],
-      "locations": [
+          "campaignId": 3333333333,
+          "playbooks": [
+            "weather_asset_groups",
+            "severe_budget"
+          ],
+          "params": {
+            "city": "Calgary AB",
+            "geo": "YYC",
+            "campaignNameContains": "YYC",
+            "severeModifiers": {
+              "severeRainMm": 30.0,
+              "severeSnowMm": 12.0,
+              "severeColdMarginC": 5.0,
+              "relativeMultiplier": 1.5,
+              "budgetBumpPct": 50
+            }
+          }
+        },
         {
-          "city": "Vancouver",
-          "latitude": 49.2827,
-          "longitude": -123.1207,
-          "timezone": "America/Vancouver",
-          "geoTargetCode": "1002250"
+          "campaignId": 4444444444,
+          "playbooks": [
+            "weather_asset_groups",
+            "severe_budget"
+          ],
+          "params": {
+            "city": "Toronto ON",
+            "geo": "YYZ",
+            "campaignNameContains": "YYZ"
+          }
         }
       ]
+    }
+  },
+  {
+    "collection_name": "CampaignBudgetState",
+    "document_id": "1234567890_1111111111",
+    "data": {
+      "customerId": "1234567890",
+      "campaignId": "1111111111",
+      "weatherLocation": "Vancouver BC",
+      "normalBudgetMicros": 100000000,
+      "increaseActive": false,
+      "increaseStartDate": null,
+      "increaseDayNumber": 0,
+      "lastAppliedBudgetMicros": null,
+      "increasedDays": [],
+      "lastRunDate": null
+    }
+  },
+  {
+    "collection_name": "AssetGroupState",
+    "document_id": "1234567890_1111111111",
+    "data": {
+      "customerId": "1234567890",
+      "campaignId": "1111111111",
+      "weatherLocation": "Vancouver BC",
+      "conditionHistory": {
+        "Cold": {
+          "runsSinceLastSeen": 99,
+          "currentStatus": "PAUSED"
+        },
+        "Rain": {
+          "runsSinceLastSeen": 99,
+          "currentStatus": "PAUSED"
+        },
+        "Snow": {
+          "runsSinceLastSeen": 99,
+          "currentStatus": "PAUSED"
+        },
+        "Warm": {
+          "runsSinceLastSeen": 99,
+          "currentStatus": "PAUSED"
+        }
+      },
+      "lastRunId": null,
+      "lastRunAt": null
     }
   }
 ]

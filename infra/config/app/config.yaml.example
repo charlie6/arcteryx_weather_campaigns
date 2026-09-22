@@ -11,8 +11,16 @@ log_level: "INFO"
 firestore_database_type: "FIRESTORE_NATIVE"
 
 #Scheduler Cron
-googleads_scheduler_schedule: "5 10 * * *"
+# The Arc'teryx spec (section 4.2) asks for two runs per day, weighted to the
+# morning: 06:00 as the decision run and 18:00 as the catch-up. This MUST agree
+# with schedule.runsPerDay in the account's GoogleAdsConfig document, because the
+# trailing window is expressed in hours but enforced in runs. A once-daily cron
+# with runsPerDay 2 in Firestore turns a 24-hour trailing window into 48 hours.
+googleads_scheduler_schedule: "0 6,18 * * *"
 sa360_scheduler_schedule: "5 10 * * *"
+# Timezone for both scheduler jobs. Each account should run in its own local
+# time, so a multi-account rollout needs one deployment per account.
+sa_run_sse_scheduler_job_timezone: "America/Vancouver"
 
 # Gemini model configuration.
 # gemini_location is NOT the Cloud Run region. Cloud Run stays in `region`
@@ -36,3 +44,13 @@ google_ads_login_customer_id: "YOUR_MCC_CUSTOMER_ID"
 
 #SA360 Customer ID to be triggered from cloud scheduler
 sa360_customer_id: "SA360_CUSTOMER_ID"
+
+# Extra environment variables for the Cloud Run service. This map REPLACES the
+# Terraform default, so keep GOOGLE_GENAI_USE_VERTEXAI here when you override it.
+# ADSTA_DRY_RUN is the log-only switch: any truthy value suppresses every Google
+# Ads mutation and SA360 sheet write at the point of the write, while Firestore
+# state and the ChangeLog still advance. Keep it on for the first validation run
+# against a live account, then remove it to go live.
+run_service_env_vars:
+  GOOGLE_GENAI_USE_VERTEXAI: "True"
+  ADSTA_DRY_RUN: "true"

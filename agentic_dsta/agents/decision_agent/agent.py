@@ -14,9 +14,10 @@
 """This agent is responsible for managing marketing campaigns for customers stored in Firestore."""
 import datetime
 import logging
+import math
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 import uuid
 
 from google.genai import Client
@@ -27,6 +28,7 @@ from google.adk import runners
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 
+from agentic_dsta.agents.decision_agent import playbooks as playbooks_lib
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
 from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterToolset
@@ -221,6 +223,183 @@ def _log_agent_chunk(chunk: Any, campaign_id: str) -> None:
         )
 
 
+def _load_playbook_library(
+    firestore_toolset: FirestoreToolset, playbook_ids: Set[str]
+) -> Dict[str, Dict[str, Any]]:
+    """Loads the referenced playbook templates from Firestore.
+
+    Playbooks are shared across every campaign and account, so they are fetched
+    once per run rather than once per campaign.
+
+    Args:
+        firestore_toolset: Client used to read the 'Playbooks' collection.
+        playbook_ids: The distinct playbook ids referenced by the config.
+
+    Returns:
+        Mapping of playbook id to its document data. Ids that could not be
+        loaded are absent, having been logged.
+    """
+    library: Dict[str, Dict[str, Any]] = {}
+    for playbook_id in sorted(playbook_ids):
+        try:
+            doc = firestore_toolset.get_document(collection="Playbooks", document_id=playbook_id)
+        except Exception as err:
+            logger.exception("Error fetching playbook '%s': %s", playbook_id, err)
+            continue
+
+        if not doc or not doc.get("exists"):
+            logger.error(
+                "Playbook '%s' is referenced by the config but does not exist in "
+                "Firestore collection 'Playbooks'.",
+                playbook_id,
+            )
+            continue
+
+        library[playbook_id] = doc.get("data", {}) or {}
+        logger.info("Loaded playbook '%s'", playbook_id)
+
+    return library
+
+
+def _load_weather_conditions(
+    firestore_toolset: FirestoreToolset, document_id: str = "default"
+) -> Dict[str, Any]:
+    """Loads the shared weather condition definitions.
+
+    These are the activation rules (section 3.2 of the Arc'teryx spec) that
+    apply identically to every city, as distinct from the per-campaign severity
+    thresholds. Keeping them in one document means a threshold change is a
+    single edit rather than one per campaign.
+
+    Args:
+        firestore_toolset: Client used to read the 'WeatherConditions' collection.
+        document_id: The condition set to load.
+
+    Returns:
+        The condition set data, or an empty dict when absent.
+    """
+    try:
+        doc = firestore_toolset.get_document(
+            collection="WeatherConditions", document_id=document_id
+        )
+    except Exception as err:
+        logger.exception("Error fetching WeatherConditions/%s: %s", document_id, err)
+        return {}
+
+    if not doc or not doc.get("exists"):
+        logger.warning(
+            "No WeatherConditions/%s document found. Playbooks that reference "
+            "shared condition definitions will be skipped.",
+            document_id,
+        )
+        return {}
+
+    return doc.get("data", {}) or {}
+
+
+def _render_conditions_table(weather_conditions: Dict[str, Any]) -> str:
+    """Renders the condition definitions as prompt text.
+
+    Args:
+        weather_conditions: The WeatherConditions document data.
+
+    Returns:
+        A newline-separated list of condition rules, or a placeholder note when
+        no conditions are configured.
+    """
+    conditions = weather_conditions.get("conditions") or []
+    if not conditions:
+        return "(no conditions configured)"
+
+    lines = []
+    for condition in conditions:
+        name = condition.get("name", "?")
+        token = condition.get("assetGroupToken", "?")
+        test = condition.get("test", "?")
+        eligible = "yes" if condition.get("severityEligible") else "no"
+        lines.append(
+            f"  - {name}: asset group name contains '{token}'; "
+            f"active when {test}; eligible for budget increase: {eligible}"
+        )
+    return "\n".join(lines)
+
+
+def _check_change_volume_guard(
+    firestore_toolset: FirestoreToolset,
+    run_id: str,
+    guard_config: Dict[str, Any],
+    eligible_campaigns: int,
+) -> None:
+    """Reports whether a run exceeded the configured change volume cap.
+
+    Section 5.5 of the Arc'teryx spec asks for a cap on how many campaigns may
+    have their budget changed in a single run, as a safety net against a bad
+    data feed. This is a cross-campaign constraint, and campaigns are processed
+    in deliberate isolation so that no campaign's context can pollute another's.
+    That isolation means no agent can know how many of its peers already acted.
+
+    This implementation therefore detects and alerts after the fact rather than
+    blocking mid-run. Enforcing the cap properly requires a two-phase run in
+    which all campaigns propose decisions and the runner applies a capped
+    subset; that is tracked as follow-up work.
+
+    Args:
+        firestore_toolset: Client used to read the 'ChangeLog' collection.
+        run_id: The identifier shared by every decision in this run.
+        guard_config: The account's 'changeVolumeGuard' block.
+        eligible_campaigns: Number of campaigns considered in this run.
+    """
+    if not guard_config.get("enabled"):
+        return
+
+    fraction = guard_config.get("maxFractionOfEligibleCampaigns", 0.25)
+    try:
+        cap = max(1, math.ceil(float(fraction) * eligible_campaigns))
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid maxFractionOfEligibleCampaigns %r; skipping the change volume check.",
+            fraction,
+        )
+        return
+
+    try:
+        result = firestore_toolset.query_collection(
+            collection="ChangeLog", field="runId", operator="==", value=run_id, limit=500
+        )
+    except Exception as err:
+        logger.exception("Unable to read ChangeLog for run %s: %s", run_id, err)
+        return
+
+    changed = [
+        doc
+        for doc in result.get("documents", [])
+        if (doc.get("data") or {}).get("budgetAfterMicros") not in (None, "unchanged")
+    ]
+
+    logger.info(
+        "Change volume for run %s: %d budget change(s) across %d eligible campaign(s), cap %d",
+        run_id,
+        len(changed),
+        eligible_campaigns,
+        cap,
+        extra={"run_id": run_id, "budget_changes": len(changed), "cap": cap},
+    )
+
+    if len(changed) > cap:
+        logger.error(
+            "CHANGE VOLUME GUARD EXCEEDED for run %s: %d budget changes against a cap "
+            "of %d (%.0f%% of %d eligible campaigns). This may indicate a bad weather "
+            "data feed. Review ChangeLog rows for runId=%s.",
+            run_id,
+            len(changed),
+            cap,
+            float(fraction) * 100,
+            eligible_campaigns,
+            run_id,
+            extra={"run_id": run_id, "budget_changes": len(changed), "cap": cap},
+        )
+
+
 async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleAds") -> None:
     """
     Main entry point for the Decision Agent.
@@ -328,13 +507,66 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         [c.get("campaignId") for c in campaigns],
     )
 
-    # 3. Loop and Process Each Campaign
+    # 3. Load shared, city-agnostic configuration.
+    #
+    # Playbooks and condition definitions are shared across every campaign, so
+    # they are read once per run. This is what allows a new city to be four
+    # lines of config rather than a duplicated copy of the decision logic.
+    referenced_playbooks: Set[str] = set()
+    for campaign in campaigns:
+        referenced_playbooks.update(playbooks_lib.resolve_playbook_ids(campaign))
+
+    playbook_library = (
+        _load_playbook_library(firestore_toolset, referenced_playbooks)
+        if referenced_playbooks
+        else {}
+    )
+    weather_conditions = _load_weather_conditions(
+        firestore_toolset, ads_config.get("weatherConditionsId", "default")
+    )
+
+    account = ads_config.get("account", "")
+    schedule = ads_config.get("schedule", {}) or {}
+    account_timezone = schedule.get("timezone")
+    run_id = f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}_{uuid.uuid4().hex[:8]}"
+
+    # Values every playbook may reference, regardless of city.
+    shared_values: Dict[str, Any] = {
+        "globalInstruction": global_instruction,
+        "conditionsTable": _render_conditions_table(weather_conditions),
+        "lookAheadHours": weather_conditions.get("lookAheadHours", 24),
+        "trailingWindowHours": weather_conditions.get("trailingWindowHours", 24),
+        "runsPerDay": schedule.get("runsPerDay", 2),
+    }
+
+    # The trailing window is expressed in hours but enforced in runs, so it has
+    # to scale with the schedule. At two runs per day a 24-hour window means the
+    # two preceding runs, exactly as the spec's worked example describes.
+    runs_per_day = shared_values["runsPerDay"] or 2
+    try:
+        shared_values["trailingWindowRuns"] = max(
+            1, round(float(shared_values["trailingWindowHours"]) * float(runs_per_day) / 24.0)
+        )
+    except (TypeError, ValueError, ZeroDivisionError):
+        shared_values["trailingWindowRuns"] = 2
+
+    logger.info(
+        "Run %s: account=%s, timezone=%s, playbooks=%s, trailing window=%s run(s)",
+        run_id,
+        account or "(unset)",
+        account_timezone or "UTC",
+        sorted(playbook_library) or "(none)",
+        shared_values["trailingWindowRuns"],
+        extra={"run_id": run_id, "customer_id": str(customer_id)},
+    )
+
+    # 4. Loop and Process Each Campaign
     successful_campaigns = 0
     failed_campaigns = 0
+    eligible_campaigns = 0
 
     for idx, campaign in enumerate(campaigns, start=1):
         campaign_id = campaign.get("campaignId")
-        campaign_instruction = campaign.get("instruction", "No specific instruction.")
 
         if not campaign_id:
             logger.warning("Skipping campaign %d/%d: missing 'campaignId' field.", idx, len(campaigns))
@@ -349,100 +581,130 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             extra={"campaign_id": str(campaign_id), "campaign_index": idx, "total_campaigns": len(campaigns)},
         )
 
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        today_str = now_utc.strftime("%Y-%m-%d")
-        three_days_later_str = (now_utc + datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+        hemisphere = ((campaign.get("params") or {}).get("hemisphere")) or "northern"
 
-        # Construct the context-rich prompt
-        combined_instruction = f"""
-        You are a Marketing Campaign Manager Agent.
-
-        **Customer Context:**
-        Customer ID: {customer_id}
-        Global Strategy: {global_instruction}
-
-        **Current Focus:**
-        Campaign ID: {campaign_id}
-        Campaign Specific Rules: {campaign_instruction}
-
-        **Current Temporal Context:**
-        - Today's Date: {today_str} (UTC)
-        - Current Year: {now_utc.year}
-        - 3-Day Forecast Window: {today_str} to {three_days_later_str}
-        - Previous 3 Years for Historical Baseline: {now_utc.year - 1}, {now_utc.year - 2}, {now_utc.year - 3}
-
-        **Task:**
-        1. Analyze the current situation for Campaign {campaign_id}.
-        2. Check if weather conditions are relevant based on the instructions.
-           If so, use the weather signal tools to fetch that data.
-        3. Check the campaign's current performance/status using GoogleAds tools for GoogleAds campaigns.
-        4. Decide on an action (Pause, Enable, Change Bid, Change Location, or No Action).
-        5. Execute the action if necessary.
-        6. Provide a concise summary of your analysis and actions.
-
-        **CRITICAL EXECUTION RULES:**
-        - You MUST invoke tools directly using standard function calling one by one.
-        - NEVER output Python code, scripts, loops, `print()` statements, or `import` statements. You do NOT have a Python code execution environment.
-        - You already have today's date ({today_str}) in context. Do not try to run python to calculate dates or periods.
-        - Any mathematical comparisons (e.g. comparing temperatures >= 3°C) must be performed directly in your thought reasoning, not in code blocks.
-        """
-
-        try:
-            # Create a fresh agent for this campaign
-            agent = create_agent(instruction=combined_instruction)
-
-            # Wrap in App and Runner for execution
-            app = apps.App(name="decision_app", root_agent=agent)
-            runner = runners.InMemoryRunner(app=app)
-
-            session_id = str(uuid.uuid4())
-            await runner.session_service.create_session(
-                session_id=session_id,
-                user_id=customer_id,
-                app_name="decision_app"
+        def _context_for(playbook_id: str, _campaign_id=campaign_id, _hemisphere=hemisphere) -> Dict[str, Any]:
+            """Builds the runner-owned context for one playbook of this campaign."""
+            return playbooks_lib.build_context(
+                customer_id=customer_id,
+                campaign_id=_campaign_id,
+                playbook_id=playbook_id,
+                run_id=run_id,
+                account=account,
+                timezone_name=account_timezone,
+                hemisphere=_hemisphere,
             )
 
-            prompt_text = f"Proceed with the analysis and management of Campaign {campaign_id} based on your instructions."
-            content = types.Content(parts=[types.Part(text=prompt_text)])
+        resolved = playbooks_lib.resolve_campaign_instructions(
+            campaign=campaign,
+            playbook_library=playbook_library,
+            context_builder=_context_for,
+            shared_values=shared_values,
+        )
 
-            logger.info("Executing agent runner for Campaign %s (session_id=%s)", campaign_id, session_id)
-            async for chunk in runner.run_async(
-                user_id=customer_id,
-                session_id=session_id,
-                new_message=content
-            ):
-                _log_agent_chunk(chunk, str(campaign_id))
-
-            campaign_elapsed = time.perf_counter() - campaign_start_time
-            logger.info(
-                "Execution completed successfully for Campaign %s in %.2fs",
+        if not resolved:
+            logger.warning(
+                "Campaign %s resolved to no runnable playbooks. Skipping.",
                 campaign_id,
-                campaign_elapsed,
-                extra={"campaign_id": str(campaign_id), "duration_s": campaign_elapsed},
+                extra={"campaign_id": str(campaign_id)},
             )
-            successful_campaigns += 1
-
-        except Exception as e:
-            campaign_elapsed = time.perf_counter() - campaign_start_time
-            logger.exception(
-                "Failed to process Campaign %s after %.2fs: %s",
-                campaign_id,
-                campaign_elapsed,
-                e,
-                extra={"campaign_id": str(campaign_id), "duration_s": campaign_elapsed},
-            )
-            failed_campaigns += 1
             continue
+
+        eligible_campaigns += 1
+
+        # Each playbook gets its own agent and session. Isolation is per
+        # (campaign, playbook) rather than per campaign so that a campaign
+        # missing its Severe Modifiers params still gets its asset groups
+        # toggled, per section 7 of the spec.
+        for playbook_id, instruction in resolved:
+            try:
+                agent = create_agent(instruction=instruction)
+
+                app = apps.App(name="decision_app", root_agent=agent)
+                runner = runners.InMemoryRunner(app=app)
+
+                session_id = str(uuid.uuid4())
+                await runner.session_service.create_session(
+                    session_id=session_id,
+                    user_id=customer_id,
+                    app_name="decision_app"
+                )
+
+                prompt_text = (
+                    f"Proceed with playbook '{playbook_id}' for Campaign {campaign_id} "
+                    "based on your instructions."
+                )
+                content = types.Content(parts=[types.Part(text=prompt_text)])
+
+                logger.info(
+                    "Executing playbook '%s' for Campaign %s (session_id=%s, run_id=%s)",
+                    playbook_id,
+                    campaign_id,
+                    session_id,
+                    run_id,
+                    extra={
+                        "campaign_id": str(campaign_id),
+                        "playbook_id": playbook_id,
+                        "run_id": run_id,
+                    },
+                )
+                async for chunk in runner.run_async(
+                    user_id=customer_id,
+                    session_id=session_id,
+                    new_message=content
+                ):
+                    _log_agent_chunk(chunk, str(campaign_id))
+
+                campaign_elapsed = time.perf_counter() - campaign_start_time
+                logger.info(
+                    "Playbook '%s' completed for Campaign %s in %.2fs",
+                    playbook_id,
+                    campaign_id,
+                    campaign_elapsed,
+                    extra={
+                        "campaign_id": str(campaign_id),
+                        "playbook_id": playbook_id,
+                        "duration_s": campaign_elapsed,
+                    },
+                )
+                successful_campaigns += 1
+
+            except Exception as e:
+                campaign_elapsed = time.perf_counter() - campaign_start_time
+                logger.exception(
+                    "Failed playbook '%s' for Campaign %s after %.2fs: %s",
+                    playbook_id,
+                    campaign_id,
+                    campaign_elapsed,
+                    e,
+                    extra={
+                        "campaign_id": str(campaign_id),
+                        "playbook_id": playbook_id,
+                        "duration_s": campaign_elapsed,
+                    },
+                )
+                failed_campaigns += 1
+                continue
+
+    # 5. Cross-campaign safety net (spec section 5.5).
+    _check_change_volume_guard(
+        firestore_toolset=firestore_toolset,
+        run_id=run_id,
+        guard_config=ads_config.get("changeVolumeGuard", {}) or {},
+        eligible_campaigns=eligible_campaigns,
+    )
 
     total_elapsed = time.perf_counter() - total_start_time
     logger.info(
-        "=== Completed Decision Agent Run for Customer %s in %.2fs (success: %d, failed: %d) ===",
+        "=== Completed Decision Agent Run %s for Customer %s in %.2fs (success: %d, failed: %d) ===",
+        run_id,
         customer_id,
         total_elapsed,
         successful_campaigns,
         failed_campaigns,
         extra={
             "customer_id": str(customer_id),
+            "run_id": run_id,
             "total_duration_s": total_elapsed,
             "successful_campaigns": successful_campaigns,
             "failed_campaigns": failed_campaigns,

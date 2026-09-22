@@ -463,6 +463,25 @@ Each document in this collection represents the workflow instructions for a spec
 
 *   **`instruction`** (String): A detailed natural language description of the optimization workflow the agent should execute for this customer. This includes steps for fetching data, evaluating campaigns, and logging decisions. Use this to provide guardrails for the agent.
 
+**Collection: `CampaignBudgetState`**
+
+Used by the weather budget-adjustment workflow (see `infra/config/samples/arcteryx_sandbox_firestore_config.json`). One document per campaign, with the document ID `{customer_id}_{campaign_id}`. Without this document the agent cannot tell an increase it applied from a budget a human edited, so a reversion would have nothing safe to return to.
+
+**Document Schema:**
+
+*   **`normalBudgetMicros`** (Number): The budget to revert to. Every increase is computed from this value, never from the live budget, so increases cannot compound.
+*   **`maxDailyBudgetMicros`** (Number, optional): Ceiling applied when normal budget plus 50% would exceed it.
+*   **`increaseActive`** (Boolean): Whether an increase is currently applied.
+*   **`increaseStartDate`** (String): `YYYY-MM-DD` on which the current increase began.
+*   **`increaseDayNumber`** (Number): Which day of the five-day maximum window this is.
+*   **`lastAppliedBudgetMicros`** (Number): The elevated amount last written by the agent. A live budget that differs from this indicates a manual override.
+*   **`increasedDays`** (Array of String): Dates on which an increase was applied, supporting the ten-day cap in any trailing thirty-day window.
+*   **`lastRunDate`** (String): `YYYY-MM-DD` of the last evaluation.
+
+**Collection: `BudgetChangeLog`**
+
+An append-only audit trail. One document per campaign per run, written whether or not the run changed anything, recording the timestamp, campaign, weather location, condition, whether the severity test was met, the observed value against the threshold it was compared to, the budget before and after, the day number, the trailing thirty-day count, the mode (`live` or `log-only`) and any notes such as a detected manual override or a missing baseline.
+
 ### API Specifications
 
 The solution leverages external APIs registered in Google Cloud API Hub to gather real-time data for decision-making. The following APIs are included by default:

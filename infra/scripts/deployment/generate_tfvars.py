@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import yaml
 import sys
 
@@ -29,9 +30,12 @@ def yaml_to_tfvars(yaml_file, tfvars_file):
                 f.write(f'{key} = "{value}"\n')
             elif isinstance(value, bool):
                 f.write(f'{key} = {str(value).lower()}\n')
-            elif isinstance(value, list):
-                # Convert list to string and replace single quotes with double quotes for Terraform
-                f.write(f'{key} = {str(value).replace("\'" , "\"")}\n')
+            elif isinstance(value, (list, dict)) or value is None:
+                # JSON is valid HCL for lists, maps and null. The previous
+                # str() of a Python object emitted single quotes, which
+                # Terraform rejects, so any map-valued variable (for example
+                # run_service_env_vars) broke the generated tfvars file.
+                f.write(f'{key} = {json.dumps(value)}\n')
             else:
                 f.write(f'{key} = {value}\n')
 
