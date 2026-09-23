@@ -316,10 +316,12 @@ def _render_conditions_table(weather_conditions: Dict[str, Any]) -> str:
         name = condition.get("name", "?")
         token = condition.get("assetGroupToken", "?")
         test = condition.get("test", "?")
-        eligible = "yes" if condition.get("severityEligible") else "no"
+        # Deliberately no severity column. This table is only ever rendered into
+        # the asset group playbook, which does not decide budgets, and severity
+        # is now a property of the city's ClimateBaselines.severeThresholds
+        # rather than of a condition.
         lines.append(
-            f"  - {name}: asset group name contains '{token}'; "
-            f"active when {test}; eligible for budget increase: {eligible}"
+            f"  - {name}: asset group name contains '{token}'; active when {test}"
         )
     return "\n".join(lines)
 

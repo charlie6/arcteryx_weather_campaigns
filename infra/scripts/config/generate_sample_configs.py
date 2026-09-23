@@ -24,9 +24,13 @@ JSON:
     cd agentic_dsta
     python3 infra/scripts/config/generate_sample_configs.py
 
-`ClimateBaselines` documents are never regenerated here. They come from real
-reanalysis data via `infra/scripts/baselines/build_climate_baselines.py` and are
-carried over from whatever is already in the target file.
+`ClimateBaselines` numbers are never invented here. They come from real reanalysis
+data via `infra/scripts/baselines/build_climate_baselines.py` and are carried over
+from whatever is already in the target file. This script does reshape them: the
+three fields a playbook actually reads stay at the top level and everything else
+is nested under `_provenance`, so no one mistakes a monthly average for a
+threshold. Where the two sample files disagree about a city, the richer document
+wins, which reconciles a divergence the per-file copies had already accumulated.
 """
 
 import json
@@ -144,32 +148,34 @@ RUN CONTEXT - already resolved, do not recompute:
   Today (account local) : {{todayLocal}} [{{timezone}}]
   Timestamp (UTC)       : {{nowIsoUtc}}
   Timestamp (local)     : {{nowIsoLocal}}
-  Current month number  : {{currentMonth}}
-  Current season        : {{season}}
   Look-ahead window     : {{lookAheadHours}} hours
   State document        : 'CampaignBudgetState' / '{{budgetStateDocId}}'
 
-SEVERE MODIFIERS for this campaign:
-  Absolute rain floor   : {{severeModifiers.severeRainMm}} mm per 24h
-  Absolute snow floor   : {{severeModifiers.severeSnowMm}} mm water equivalent per 24h
-  Cold margin           : {{severeModifiers.severeColdMarginC}} C below the seasonal baseline
-  Relative multiplier   : {{severeModifiers.relativeMultiplier}} times the monthly baseline
+BUDGET LEVERS for this campaign. These control the SIZE and DURATION of an increase only.
+What counts as severe weather is a property of the city, not of the campaign, and is read
+from Firestore in STEP 1.
   Budget bump           : {{severeModifiers.budgetBumpPct}} percent
   Optional ceiling      : {{severeModifiers.maxDailyBudgetMicros}} micros (null means no ceiling)
   Max consecutive days  : {{maxConsecutiveDays}}
   Rolling window        : {{maxIncreasedDaysInWindow}} increased days per {{rollingWindowDays}} days
 
-STEP 1 - Resolve coordinates and baselines.
+STEP 1 - Resolve coordinates and severity thresholds.
 Call get_document on collection 'ClimateBaselines', document_id '{{city}}'. From that one
-document read:
-  latitude, longitude                 coordinates for the forecast call
-  monthlyRainMmPerWetDay[{{currentMonth}}]   rain baseline, mm
-  monthlySnowMmSwePerSnowDay[{{currentMonth}}]  snow baseline, mm water equivalent
-  seasonalColdBaselineC.{{season}}     cold baseline, Celsius
-Never assume coordinates or baselines. If the document does not exist, or either coordinate is
+document read exactly these four fields and no others:
+  latitude, longitude               coordinates for the forecast call
+  severeThresholds.rainMm           rain threshold, mm accumulated over the window
+  severeThresholds.snowMmSwe        snow threshold, mm water equivalent over the window
+  severeThresholds.coldC            cold threshold, degrees Celsius
+Each threshold is a percentile of this city's own multi-decade record, so it already means
+'unusual for here'. Use it exactly as stored. Do NOT scale, multiply or offset it, and do NOT
+combine it with any other number in the document.
+The document also has a '_provenance' object recording how the thresholds were derived
+(monthly averages, wet-day counts, data source). NOTHING in _provenance is a threshold.
+Never read a threshold from it.
+Never assume coordinates or thresholds. If the document does not exist, or either coordinate is
 missing, make NO change, log notes 'missing ClimateBaselines document' and stop.
-If a baseline needed for one condition is missing or null, that condition cannot qualify: treat
-it as not severe, log a warning, and carry on with the others.
+If a threshold needed for one condition is missing or null, that condition cannot qualify:
+treat it as not severe, log a warning, and carry on with the others.
 
 STEP 2 - Forecast.
 Call get_24h_weather_signals with the latitude and longitude from STEP 1 and hours
@@ -179,13 +185,12 @@ an increase is currently active, LEAVE IT IN PLACE and let the clock continue, b
 reverting on a transient failure and re-applying next run would create churn. Write a change
 log row with notes 'weather API failure' and stop.
 
-STEP 3 - Severity test. Rain and snow require BOTH a relative and an absolute test to pass, so
-a wet month cannot trigger an increase on a trivial amount of rain.
-  RAIN severe : rain_accumulation_mm >= {{severeModifiers.relativeMultiplier}} * rain baseline
-                AND rain_accumulation_mm >= {{severeModifiers.severeRainMm}}
-  SNOW severe : snow_accumulation_mm >= {{severeModifiers.relativeMultiplier}} * snow baseline
-                AND snow_accumulation_mm >= {{severeModifiers.severeSnowMm}}
-  COLD severe : min_temperature_c <= (cold baseline - {{severeModifiers.severeColdMarginC}})
+STEP 3 - Severity test. One test per condition, comparing the forecast directly against that
+city's threshold from STEP 1.
+  RAIN severe : rain_accumulation_mm >= severeThresholds.rainMm
+  SNOW severe : snow_accumulation_mm >= severeThresholds.snowMmSwe
+  COLD severe : min_temperature_c <= severeThresholds.coldC
+Note the direction: rain and snow trigger at or ABOVE the threshold, cold at or BELOW it.
 Hot and warm conditions NEVER qualify for a budget change.
 SEVERE is true if any single test passes. Increases never stack: if several conditions qualify
 on the same day the increase is still {{severeModifiers.budgetBumpPct}} percent in total.
@@ -312,15 +317,12 @@ SHARED_PLAYBOOKS = [
         "document_id": "severe_budget",
         "data": {
             "description": (
-                "Severe weather budget adjustment, spec section 5. Raises the daily budget when "
-                "an event is materially worse than the seasonal norm, then reverts."
+                "Severe weather budget adjustment, spec section 5. Raises the daily budget "
+                "when the forecast crosses that city's severeThresholds in ClimateBaselines, "
+                "then reverts. A campaign opts in by declaring budgetBumpPct."
             ),
             "requiredParams": [
                 "city",
-                "severeModifiers.severeRainMm",
-                "severeModifiers.severeSnowMm",
-                "severeModifiers.severeColdMarginC",
-                "severeModifiers.relativeMultiplier",
                 "severeModifiers.budgetBumpPct",
             ],
             "defaults": {
@@ -347,9 +349,12 @@ CONFIG = [
         "document_id": "default",
         "data": {
             "_comment": (
-                "Shared activation rules from spec section 3.2. These are the same for every "
-                "city; per-campaign severity thresholds live in the campaign's "
-                "params.severeModifiers. Changing a threshold here changes it everywhere."
+                "Shared activation rules from spec section 3.2. These decide which weather "
+                "asset groups are enabled and are the same for every city. They are NOT the "
+                "severe-weather thresholds: those are per city, in "
+                "ClimateBaselines/<city>.severeThresholds. Changing a test here changes it "
+                "for every account using this document. Fields prefixed with an underscore "
+                "are documentation and are not read by the code."
             ),
             "lookAheadHours": 24,
             "trailingWindowHours": 24,
@@ -358,25 +363,21 @@ CONFIG = [
                     "name": "Cold",
                     "assetGroupToken": "_COLD_",
                     "test": "min_temperature_c < 9.0",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Rain",
                     "assetGroupToken": "_RAIN_",
                     "test": "max_rain_rate_mm_per_h >= 0.2 AND rain_present is true",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Snow",
                     "assetGroupToken": "_SNOW_",
                     "test": "snow_present is true",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Warm",
                     "assetGroupToken": "_SUN_",
                     "test": "max_temperature_c > 10.0",
-                    "severityEligible": False,
                 },
             ],
         },
@@ -386,21 +387,20 @@ CONFIG = [
         "collection_name": "GoogleAdsConfig",
         "document_id": "1234567890",
         "data": {
-            "customerId": 1234567890,
-            # Informational only. The login-customer-id header is taken from the
-            # GOOGLE_ADS_LOGIN_CUSTOMER_ID environment variable, set from
-            # google_ads_login_customer_id in config.yaml. Nothing reads this field.
-            "loginCustomerId": "REPLACE_WITH_MCC_ID",
+            # The document id IS the customer id, and the login-customer-id
+            # header comes from the GOOGLE_ADS_LOGIN_CUSTOMER_ID environment
+            # variable (set from google_ads_login_customer_id in config.yaml).
+            # Neither is repeated here.
             "account": "Canada",
-            "instruction": "Arc'teryx Canada weather-triggered PMax.",
             "schedule": {
                 "timezone": "America/Toronto",
+                # Used to convert trailingWindowHours into a number of runs.
+                # The actual run times come from Cloud Scheduler, not from here.
                 "runsPerDay": 2,
-                "runHours": [6, 18],
             },
-            "notifications": {
-                "summaryRecipients": ["REPLACE_WITH_TEAM_ALIAS@example.com"],
-            },
+            # Detect-only. The run logs an error if the cap is breached, but the
+            # changes are already applied by then; real enforcement needs a
+            # two-phase run. See _check_change_volume_guard.
             "changeVolumeGuard": {
                 "enabled": True,
                 "maxFractionOfEligibleCampaigns": 0.25,
@@ -414,11 +414,10 @@ CONFIG = [
                         "city": "Vancouver BC",
                         "geo": "VAN",
                         "campaignNameContains": "VAN",
+                        # Budget levers only. What counts as severe weather is
+                        # per city and comes from
+                        # ClimateBaselines/<city>.severeThresholds.
                         "severeModifiers": {
-                            "severeRainMm": 45.0,
-                            "severeSnowMm": 10.0,
-                            "severeColdMarginC": 5.0,
-                            "relativeMultiplier": 1.5,
                             "budgetBumpPct": 50,
                             "maxDailyBudgetMicros": 200000000,
                         },
@@ -432,17 +431,14 @@ CONFIG = [
                         "geo": "YYC",
                         "campaignNameContains": "YYC",
                         "severeModifiers": {
-                            "severeRainMm": 30.0,
-                            "severeSnowMm": 12.0,
-                            "severeColdMarginC": 5.0,
-                            "relativeMultiplier": 1.5,
                             "budgetBumpPct": 50,
                         },
                     },
                 },
                 {
-                    # No severeModifiers: asset groups are still toggled, but no
-                    # budget increase is possible. Spec section 7.
+                    # No severeModifiers, so severe_budget is missing its
+                    # required budgetBumpPct and is skipped with a log line.
+                    # Asset groups are still toggled. Spec section 7.
                     "campaignId": 4444444444,
                     "playbooks": ["weather_asset_groups", "severe_budget"],
                     "params": {
@@ -522,25 +518,21 @@ SANDBOX_CONFIG = [
                     "name": "Cold",
                     "assetGroupToken": "_COLD",
                     "test": "min_temperature_c < 9.0",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Rain",
                     "assetGroupToken": "_RAIN",
                     "test": "max_rain_rate_mm_per_h >= 0.2 AND rain_present is true",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Snow",
                     "assetGroupToken": "_SNOW",
                     "test": "snow_present is true",
-                    "severityEligible": True,
                 },
                 {
                     "name": "Warm",
                     "assetGroupToken": "_SUN",
                     "test": "max_temperature_c > 10.0",
-                    "severityEligible": False,
                 },
             ],
         },
@@ -549,20 +541,14 @@ SANDBOX_CONFIG = [
         "collection_name": "GoogleAdsConfig",
         "document_id": "5341114500",
         "data": {
-            "customerId": 5341114500,
-            # Informational only; see the note on the Canada config above.
-            "loginCustomerId": "REPLACE_WITH_MCC_ID",
             "account": "Canada",
-            "instruction": (
-                "Arc'teryx weather-triggered PMax sandbox test. Vancouver signals against "
-                "the ADSTA test campaign."
-            ),
             "schedule": {
                 "timezone": "America/Vancouver",
                 "runsPerDay": 2,
-                "runHours": [6, 18],
             },
-            "notifications": {"summaryRecipients": []},
+            # Detect-only. The run logs an error if the cap is breached, but the
+            # budget changes are already applied by then; real enforcement needs
+            # a two-phase run. See _check_change_volume_guard.
             "changeVolumeGuard": {
                 "enabled": True,
                 "maxFractionOfEligibleCampaigns": 0.25,
@@ -576,11 +562,10 @@ SANDBOX_CONFIG = [
                         "city": "Vancouver BC",
                         "geo": "VAN",
                         "campaignNameContains": "ADSTA Weather PMax Test",
+                        # Budget levers only. What counts as severe weather is
+                        # per city, not per campaign, and comes from
+                        # ClimateBaselines.severeThresholds.
                         "severeModifiers": {
-                            "severeRainMm": 45.0,
-                            "severeSnowMm": 10.0,
-                            "severeColdMarginC": 5.0,
-                            "relativeMultiplier": 1.5,
                             "budgetBumpPct": 50,
                             "maxDailyBudgetMicros": 2000000,
                         },
@@ -625,33 +610,162 @@ SANDBOX_CONFIG = [
 ]
 
 
-def _write(path: str, documents) -> None:
-    """Writes a config file, preserving any existing ClimateBaselines entries.
+TEST_CONFIG_PATH = "infra/config/samples/arcteryx_test_firestore_config.json"
+SANDBOX_CONFIG_PATH = "infra/config/samples/arcteryx_sandbox_firestore_config.json"
 
-    Climate baselines are produced by infra/scripts/baselines/build_climate_baselines.py
-    from real reanalysis data, so they are carried over rather than regenerated here.
+# The only ClimateBaselines fields any playbook reads. Everything else in the
+# document describes how the numbers were derived.
+#
+# The split exists because a flat namespace invited the reader to treat any
+# plausible-looking number as a threshold. severeThresholds sat directly beside
+# monthlyRainMmPerWetDay, and during QA the two were understandably confused.
+# The provenance still answers "where did 48.0 come from", so it is nested
+# rather than deleted.
+LIVE_BASELINE_FIELDS = ("latitude", "longitude", "severeThresholds")
+
+
+def _normalise_baseline(document):
+    """Splits a ClimateBaselines document into live fields and provenance.
+
+    Idempotent: a document already carrying '_provenance' is returned with the
+    same shape, so repeated regeneration does not nest it further.
+
+    Args:
+        document: A ClimateBaselines entry from a sample file.
+
+    Returns:
+        The entry with only LIVE_BASELINE_FIELDS at the top level of 'data'
+        and every other field under 'data._provenance'.
+    """
+    data = dict(document.get("data", {}))
+    provenance = dict(data.pop("_provenance", {}))
+
+    for key in list(data):
+        if key not in LIVE_BASELINE_FIELDS:
+            provenance[key] = data.pop(key)
+
+    if provenance:
+        data["_provenance"] = provenance
+
+    return {**document, "data": data}
+
+
+def _baseline_rank(document):
+    """Scores a baseline document by completeness, for de-duplication.
+
+    Args:
+        document: A normalised ClimateBaselines entry.
+
+    Returns:
+        A sort key where a document carrying severeThresholds always wins.
+    """
+    data = document.get("data", {})
+    return (
+        1 if data.get("severeThresholds") else 0,
+        len(json.dumps(data, sort_keys=True)),
+    )
+
+
+def _canonical_baselines(paths):
+    """Builds the best-known baseline document per city across the sample files.
+
+    The samples each preserved their own copy and had already diverged: the
+    sandbox seed carried severeThresholds while the test seed predated the
+    field, and nothing would ever have reconciled them. Taking the richest
+    version of each city heals that and keeps the two files consistent.
+
+    Args:
+        paths: Sample file paths to read.
+
+    Returns:
+        A mapping of city document id to normalised ClimateBaselines entry.
+    """
+    canonical = {}
+    for path in paths:
+        target = pathlib.Path(path)
+        if not target.exists():
+            continue
+        for item in json.loads(target.read_text()):
+            if item.get("collection_name") != "ClimateBaselines":
+                continue
+            normalised = _normalise_baseline(item)
+            city = normalised.get("document_id")
+            incumbent = canonical.get(city)
+            if incumbent is None or _baseline_rank(normalised) > _baseline_rank(incumbent):
+                canonical[city] = normalised
+    return canonical
+
+
+def _write(path: str, documents, canonical) -> None:
+    """Writes a config file, preserving the ClimateBaselines entries it already had.
+
+    Climate baselines come from real reanalysis data via
+    infra/scripts/baselines/build_climate_baselines.py, so they are carried over
+    rather than regenerated. Each file keeps its own set of cities; only the
+    content of those documents is taken from the canonical set.
 
     Args:
         path: Destination path relative to the repository's agentic_dsta directory.
         documents: The documents to write after the preserved baselines.
+        canonical: Best-known baseline per city, from _canonical_baselines.
     """
     target = pathlib.Path(path)
     baselines = []
     if target.exists():
-        existing = json.loads(target.read_text())
-        baselines = [
-            item for item in existing if item.get("collection_name") == "ClimateBaselines"
-        ]
+        for item in json.loads(target.read_text()):
+            if item.get("collection_name") != "ClimateBaselines":
+                continue
+            city = item.get("document_id")
+            baselines.append(canonical.get(city) or _normalise_baseline(item))
+
+    missing = [
+        b["document_id"]
+        for b in baselines
+        if not b.get("data", {}).get("severeThresholds")
+    ]
+    if missing:
+        # Not fatal here, but the severe_budget playbook stops for these cities
+        # rather than guessing, so surface it at generation time.
+        print(f"  WARNING: no severeThresholds for {', '.join(missing)}")
+
+    _check_campaign_cities(documents, {b["document_id"] for b in baselines})
 
     output = baselines + documents
     target.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n")
     print(f"Wrote {target} with {len(output)} documents.")
 
 
+def _check_campaign_cities(documents, baseline_cities) -> None:
+    """Warns about campaigns whose city has no ClimateBaselines document.
+
+    A campaign referencing a city that was never built is not a loud failure at
+    run time: severe_budget reads the missing document, logs a note and stops.
+    The budget simply never moves. Surfacing it here turns a silent no-op into
+    something a reviewer sees before the config is uploaded.
+
+    Args:
+        documents: The documents about to be written.
+        baseline_cities: Document ids of the baselines in the same file.
+    """
+    for document in documents:
+        if document.get("collection_name") != "GoogleAdsConfig":
+            continue
+        for campaign in document.get("data", {}).get("campaigns", []):
+            city = (campaign.get("params") or {}).get("city")
+            if city and city not in baseline_cities:
+                print(
+                    f"  WARNING: campaign {campaign.get('campaignId')} uses city "
+                    f"'{city}', which has no ClimateBaselines document. "
+                    "severe_budget will stop for it and no budget will change."
+                )
+
+
 def main() -> None:
     """Regenerates both sample configs."""
-    _write("infra/config/samples/arcteryx_test_firestore_config.json", CONFIG)
-    _write("infra/config/samples/arcteryx_sandbox_firestore_config.json", SANDBOX_CONFIG)
+    paths = [TEST_CONFIG_PATH, SANDBOX_CONFIG_PATH]
+    canonical = _canonical_baselines(paths)
+    _write(TEST_CONFIG_PATH, CONFIG, canonical)
+    _write(SANDBOX_CONFIG_PATH, SANDBOX_CONFIG, canonical)
 
 
 if __name__ == "__main__":

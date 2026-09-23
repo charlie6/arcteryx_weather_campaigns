@@ -48,10 +48,10 @@ def _context(playbook_id: str = "test_playbook") -> Dict[str, Any]:
 class TestFlattenParams:
     def test_flattens_nested_dicts_to_dotted_keys(self):
         flat = playbooks.flatten_params(
-            {"city": "Vancouver BC", "severeModifiers": {"severeRainMm": 45.0}}
+            {"city": "Vancouver BC", "severeModifiers": {"budgetBumpPct": 45.0}}
         )
         assert flat["city"] == "Vancouver BC"
-        assert flat["severeModifiers.severeRainMm"] == 45.0
+        assert flat["severeModifiers.budgetBumpPct"] == 45.0
 
     def test_retains_the_intermediate_dict_under_its_own_key(self):
         flat = playbooks.flatten_params({"severeModifiers": {"a": 1}})
@@ -64,10 +64,10 @@ class TestFlattenParams:
 class TestRenderTemplate:
     def test_substitutes_simple_and_dotted_tokens(self):
         rendered = playbooks.render_template(
-            "City {{city}} floor {{severeModifiers.severeRainMm}}mm",
-            {"city": "Vancouver BC", "severeModifiers.severeRainMm": 45.0},
+            "City {{city}} bump {{severeModifiers.budgetBumpPct}} pct",
+            {"city": "Vancouver BC", "severeModifiers.budgetBumpPct": 50},
         )
-        assert rendered == "City Vancouver BC floor 45.0mm"
+        assert rendered == "City Vancouver BC bump 50 pct"
 
     def test_tolerates_whitespace_inside_braces(self):
         assert playbooks.render_template("{{ city }}", {"city": "Calgary AB"}) == "Calgary AB"
@@ -177,7 +177,7 @@ class TestRenderCampaignPlaybook:
                 "template": "ceiling {{severeModifiers.maxDailyBudgetMicros}}",
                 "defaults": {"severeModifiers": {"maxDailyBudgetMicros": None}},
             },
-            campaign={"params": {"severeModifiers": {"severeRainMm": 45.0}}},
+            campaign={"params": {"severeModifiers": {"budgetBumpPct": 45.0}}},
             context=_context(),
         )
         assert result == "ceiling null"
@@ -200,12 +200,12 @@ class TestRenderCampaignPlaybook:
                 playbook_id="severe_budget",
                 playbook={
                     "template": "{{city}}",
-                    "requiredParams": ["severeModifiers.severeRainMm"],
+                    "requiredParams": ["severeModifiers.budgetBumpPct"],
                 },
                 campaign={"params": {"city": "Toronto ON"}},
                 context=_context(),
             )
-        assert "severeModifiers.severeRainMm" in str(err.value)
+        assert "severeModifiers.budgetBumpPct" in str(err.value)
 
     def test_empty_template_raises(self):
         with pytest.raises(playbooks.PlaybookResolutionError):
@@ -219,8 +219,8 @@ class TestResolveCampaignInstructions:
         return {
             "weather_asset_groups": {"template": "toggle {{city}}", "requiredParams": ["city"]},
             "severe_budget": {
-                "template": "budget {{city}} {{severeModifiers.severeRainMm}}",
-                "requiredParams": ["severeModifiers.severeRainMm"],
+                "template": "budget {{city}} {{severeModifiers.budgetBumpPct}}",
+                "requiredParams": ["severeModifiers.budgetBumpPct"],
             },
         }
 
@@ -229,7 +229,7 @@ class TestResolveCampaignInstructions:
             campaign={
                 "campaignId": 1111111111,
                 "playbooks": ["weather_asset_groups", "severe_budget"],
-                "params": {"city": "Vancouver BC", "severeModifiers": {"severeRainMm": 45.0}},
+                "params": {"city": "Vancouver BC", "severeModifiers": {"budgetBumpPct": 45.0}},
             },
             playbook_library=self._library(),
             context_builder=lambda pid: _context(pid),

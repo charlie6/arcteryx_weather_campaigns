@@ -45,7 +45,7 @@ import zoneinfo
 logger = logging.getLogger(__name__)
 
 # Matches {{token}} and {{ token }}, where token may be dotted for nested
-# params (e.g. {{severeModifiers.severeRainMm}}).
+# params (e.g. {{severeModifiers.budgetBumpPct}}).
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 
 # Context keys the runner owns. A campaign's params may not shadow these: the
@@ -109,8 +109,8 @@ def season_for_month(month: int, hemisphere: str = "northern") -> str:
 def flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
     """Flattens a nested params dict into dot-notation keys.
 
-    ``{"severeModifiers": {"severeRainMm": 45}}`` becomes
-    ``{"severeModifiers.severeRainMm": 45}``, so a template can reference the
+    ``{"severeModifiers": {"budgetBumpPct": 50}}`` becomes
+    ``{"severeModifiers.budgetBumpPct": 50}``, so a template can reference the
     leaf directly without the renderer needing to understand the structure.
     Intermediate dicts are retained under their own key as well, which lets a
     playbook test for the presence of a whole block.

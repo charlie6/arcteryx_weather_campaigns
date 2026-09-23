@@ -632,47 +632,21 @@ def render_firestore_documents(
         "collection_name": collection,
         "document_id": document_id,
         "data": {
-            "city": record["city"],
-            "account": record["account"],
-            "country": record["country"],
+            # Top level is reserved for the fields a playbook actually reads.
+            # Everything descriptive lives under _provenance so that a reader
+            # scanning the document cannot mistake a monthly average for a
+            # threshold, which is exactly what happened during QA.
             "latitude": record["latitude"],
             "longitude": record["longitude"],
-            "timezone": record["timezone"],
-            "gridElevationM": record["grid_elevation_m"],
-            "source": "ERA5 via Open-Meteo archive",
-            "wetDayThresholdMm": WET_DAY_THRESHOLD_MM,
-            "snowUnits": "mm water equivalent",
-            "yearsCovered": record["years_covered"],
-            "monthlyRainMmPerWetDay": {
-                month: values["rain_mm_per_wet_day"]
-                for month, values in record["months"].items()
-            },
-            "monthlySnowMmSwePerSnowDay": {
-                month: values["snow_mm_swe_per_snow_day"]
-                for month, values in record["months"].items()
-            },
-            "monthlyWetDays": {
-                month: values["wet_days_per_month"]
-                for month, values in record["months"].items()
-            },
-            "monthlySnowDays": {
-                month: values["snow_days_per_month"]
-                for month, values in record["months"].items()
-            },
-            # Marked provisional: the published values these replace appear to
-            # be airport-station readings, and the divergence from a grid cell
-            # is large enough to change how often the rule fires.
-            "seasonalColdBaselineC": {
-                season: values["cold_baseline_c"]
-                for season, values in record["seasons"].items()
-            },
-            "coldBaselineProvisional": True,
-            # The thresholds the severity rule should compare against
-            # directly. These replace the "mean, then subtract a margin"
-            # construction, which produced a 0.5 sigma cold trigger firing on
-            # a third of all winter days. Each threshold carries the
-            # percentile that defined it and the historical trigger rate it
-            # implies, so the rule can be audited without re-deriving it.
+            # The thresholds the severity rule compares against directly.
+            # These replace the "mean, then subtract a margin" construction,
+            # which produced a 0.5 sigma cold trigger firing on a third of all
+            # winter days. Each threshold keeps the percentile that defined it
+            # and the historical trigger rate it implies, so the rule can be
+            # audited without re-deriving it. Those two are documentation, but
+            # they stay here rather than in _provenance because they are
+            # meaningless apart from the number they describe, and neither is
+            # mistakable for a millimetre threshold.
             "severeThresholds": {
                 "rainMm": record["severe"]["rain_mm"],
                 "rainPercentile": record["severe"]["rain_percentile"],
@@ -684,7 +658,46 @@ def render_firestore_documents(
                 "coldPercentile": record["severe"]["cold_percentile"],
                 "coldDaysPerYear": record["severe"]["cold_days_per_year"],
             },
-            "warnings": record["warnings"],
+            "_provenance": {
+                "_comment": (
+                    "How the thresholds above were derived. Nothing here is "
+                    "read at run time, and nothing here is a threshold."
+                ),
+                "city": record["city"],
+                "account": record["account"],
+                "country": record["country"],
+                "timezone": record["timezone"],
+                "gridElevationM": record["grid_elevation_m"],
+                "source": "ERA5 via Open-Meteo archive",
+                "wetDayThresholdMm": WET_DAY_THRESHOLD_MM,
+                "snowUnits": "mm water equivalent",
+                "yearsCovered": record["years_covered"],
+                "monthlyRainMmPerWetDay": {
+                    month: values["rain_mm_per_wet_day"]
+                    for month, values in record["months"].items()
+                },
+                "monthlySnowMmSwePerSnowDay": {
+                    month: values["snow_mm_swe_per_snow_day"]
+                    for month, values in record["months"].items()
+                },
+                "monthlyWetDays": {
+                    month: values["wet_days_per_month"]
+                    for month, values in record["months"].items()
+                },
+                "monthlySnowDays": {
+                    month: values["snow_days_per_month"]
+                    for month, values in record["months"].items()
+                },
+                # Marked provisional: the published values these replace appear
+                # to be airport-station readings, and the divergence from a grid
+                # cell is large enough to change how often the rule fires.
+                "seasonalColdBaselineC": {
+                    season: values["cold_baseline_c"]
+                    for season, values in record["seasons"].items()
+                },
+                "coldBaselineProvisional": True,
+                "warnings": record["warnings"],
+            },
         },
     })
   return documents
