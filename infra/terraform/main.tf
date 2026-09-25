@@ -103,6 +103,7 @@ module "cloud_run_service" {
   container_port        = var.container_port
   allow_unauthenticated = var.allow_unauthenticated
   service_account_email = google_service_account.run_sa.email
+  request_timeout       = var.cloud_run_request_timeout
 
   env_vars = merge(var.run_service_env_vars, {
     GOOGLE_CLOUD_PROJECT          = var.project_id

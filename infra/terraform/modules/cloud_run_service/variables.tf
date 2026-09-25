@@ -64,3 +64,9 @@ variable "secret_env_vars" {
   }))
   default = {}
 }
+
+variable "request_timeout" {
+  description = "Maximum duration of one request, e.g. \"1800s\" (Cloud Run max 3600s)."
+  type        = string
+  default     = "1800s"
+}

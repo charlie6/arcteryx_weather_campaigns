@@ -283,9 +283,20 @@ variable "sa_run_sse_scheduler_job_timezone" {
 }
 
 variable "sa_run_sse_scheduler_job_attempt_deadline" {
-  description = "Attempt deadline of sa-run-sse-job scheduler job."
+  description = <<-EOT
+    How long Cloud Scheduler waits for a run to respond (HTTP targets allow
+    15s-1800s). A run processes every campaign sequentially in one request
+    (about 30-130s per campaign), so the old 180s default produced
+    DEADLINE_EXCEEDED once runs grew.
+  EOT
   type        = string
-  default     = "180s"
+  default     = "1800s"
+}
+
+variable "cloud_run_request_timeout" {
+  description = "Cloud Run request timeout. Keep >= the scheduler attempt deadline."
+  type        = string
+  default     = "1800s"
 }
 
 

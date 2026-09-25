@@ -56,6 +56,9 @@ resource "google_cloud_run_v2_service" "default" {
       }
     }
     service_account = var.service_account_email
+    # Max time one request may run. A scheduler run processes every campaign
+    # in one request, so this must be at least the scheduler attempt deadline.
+    timeout = var.request_timeout
   }
 
 
