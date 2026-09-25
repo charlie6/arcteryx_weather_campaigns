@@ -363,13 +363,14 @@ terraform -chdir=terraform apply -auto-approve -var-file="terraform.tfvars" \
 echo "--- Deployment complete! ---"
 
 # 12. Upload Firestore Configuration to Firestore
-echo "--- Uploading GoogleAds, SA360 and CustomerInstructions to Firestore ---"
-# Which seed to load. The generic sample carries no Playbooks documents, so an
-# Arc'teryx account seeded with it would find no playbook for any campaign and
-# skip the whole run. Point this at the
-# Arc'teryx seed for those accounts, for example:
-#   FIRESTORE_CONFIG_JSON=./config/samples/arcteryx_sandbox_firestore_config.json ./deploy.sh
-CONFIG_JSON="${FIRESTORE_CONFIG_JSON:-./config/samples/firestore_config.json}"
+echo "--- Uploading Firestore seed configuration ---"
+# Which seed to load. Defaults to the Arc'teryx sandbox seed, the only one kept
+# current. The old generic firestore_config.json was removed: it carried stale
+# demo accounts (pollen and temperature rules, placeholder customer ids) and no
+# Playbooks, so any account seeded from it skipped every run. Override for
+# another account, for example:
+#   FIRESTORE_CONFIG_JSON=./config/samples/arcteryx_test_firestore_config.json ./deploy.sh
+CONFIG_JSON="${FIRESTORE_CONFIG_JSON:-./config/samples/arcteryx_sandbox_firestore_config.json}"
 UPLOAD_SCRIPT="./scripts/deployment/upload_config.py"
 
 if [ -f "$CONFIG_JSON" ] && [ -f "$UPLOAD_SCRIPT" ]; then
