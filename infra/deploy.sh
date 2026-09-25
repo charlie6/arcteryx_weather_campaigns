@@ -372,15 +372,31 @@ echo "--- Uploading Firestore seed configuration ---"
 #   FIRESTORE_CONFIG_JSON=./config/samples/arcteryx_test_firestore_config.json ./deploy.sh
 CONFIG_JSON="${FIRESTORE_CONFIG_JSON:-./config/samples/arcteryx_sandbox_firestore_config.json}"
 UPLOAD_SCRIPT="./scripts/deployment/upload_config.py"
+# Seed mode:
+#   safe (default) - Playbooks and ClimateBaselines are replaced with the
+#                    release versions; every other document (GoogleAdsConfig,
+#                    CustomerInstructions, CampaignBudgetState,
+#                    AssetGroupState, ...) is created only if it is missing,
+#                    so live edits and run state survive a redeploy.
+#   overwrite      - replace every document in the seed (full reset):
+#                    FIRESTORE_SEED_MODE=overwrite ./deploy.sh
+SEED_MODE="${FIRESTORE_SEED_MODE:-safe}"
+SEED_FLAGS=()
+case "$SEED_MODE" in
+    safe) ;;
+    overwrite) SEED_FLAGS+=(--overwrite_all) ;;
+    *) echo "Error: FIRESTORE_SEED_MODE must be 'safe' or 'overwrite' (got '$SEED_MODE')."; exit 1 ;;
+esac
 
 if [ -f "$CONFIG_JSON" ] && [ -f "$UPLOAD_SCRIPT" ]; then
-    echo "   Uploading config from $CONFIG_JSON..."
+    echo "   Uploading config from $CONFIG_JSON (mode: $SEED_MODE)..."
     # Reuse the ACCESS_TOKEN generated earlier
     python3 "$UPLOAD_SCRIPT" \
         --project_id "$PROJECT_ID" \
         --database "$FIRESTORE_DB" \
         --config "$CONFIG_JSON" \
-        --access_token "$ACCESS_TOKEN" || {
+        --access_token "$ACCESS_TOKEN" \
+        "${SEED_FLAGS[@]}" || {
             echo "Error: Failed to upload configuration to Firestore."
             exit 1
         }
