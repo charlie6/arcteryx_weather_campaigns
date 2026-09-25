@@ -261,69 +261,56 @@ def _load_playbook_library(
     return library
 
 
-def _load_weather_conditions(
-    firestore_toolset: FirestoreToolset, document_id: str = "default"
+def _account_weather_values(
+    ads_config: Dict[str, Any], customer_id: str
 ) -> Dict[str, Any]:
-    """Loads the shared weather condition definitions.
+    """Extracts the account-level weather settings every playbook may reference.
 
-    These are the activation rules (section 3.2 of the Arc'teryx spec) that
-    apply identically to every city, as distinct from the per-campaign severity
-    thresholds. Keeping them in one document means a threshold change is a
-    single edit rather than one per campaign.
+    These used to live in a separate WeatherConditions collection, selected by
+    ``weatherConditionsId``. Each account pointed at exactly one such document,
+    so the indirection bought nothing, and the document mixed three unrelated
+    things: the account's asset group naming (tokens), account policy (the
+    windows) and spec rules (the activation tests). Tokens and windows now sit
+    on the account document; the activation thresholds are playbook defaults.
 
     Args:
-        firestore_toolset: Client used to read the 'WeatherConditions' collection.
-        document_id: The condition set to load.
+        ads_config: The GoogleAdsConfig document data.
+        customer_id: Used only for log context.
 
     Returns:
-        The condition set data, or an empty dict when absent.
+        A mapping of lookAheadHours, trailingWindowHours and assetGroupTokens.
+        When tokens are missing they are left absent, so the asset group
+        playbook fails to render and is skipped with a log line naming the
+        token, rather than matching asset groups on a guess.
     """
-    try:
-        doc = firestore_toolset.get_document(
-            collection="WeatherConditions", document_id=document_id
-        )
-    except Exception as err:
-        logger.exception("Error fetching WeatherConditions/%s: %s", document_id, err)
-        return {}
-
-    if not doc or not doc.get("exists"):
+    if ads_config.get("weatherConditionsId"):
+        # A config seeded before the collection was retired. Nothing breaks,
+        # but an operator may be editing a document that is now ignored.
         logger.warning(
-            "No WeatherConditions/%s document found. Playbooks that reference "
-            "shared condition definitions will be skipped.",
-            document_id,
+            "GoogleAdsConfig/%s still sets weatherConditionsId=%r. The "
+            "WeatherConditions collection is no longer read; set "
+            "lookAheadHours, trailingWindowHours and assetGroupTokens on the "
+            "account document instead.",
+            customer_id,
+            ads_config.get("weatherConditionsId"),
+            extra={"customer_id": str(customer_id)},
         )
-        return {}
 
-    return doc.get("data", {}) or {}
-
-
-def _render_conditions_table(weather_conditions: Dict[str, Any]) -> str:
-    """Renders the condition definitions as prompt text.
-
-    Args:
-        weather_conditions: The WeatherConditions document data.
-
-    Returns:
-        A newline-separated list of condition rules, or a placeholder note when
-        no conditions are configured.
-    """
-    conditions = weather_conditions.get("conditions") or []
-    if not conditions:
-        return "(no conditions configured)"
-
-    lines = []
-    for condition in conditions:
-        name = condition.get("name", "?")
-        token = condition.get("assetGroupToken", "?")
-        test = condition.get("test", "?")
-        # Deliberately no severity column. This table is only ever rendered into
-        # the asset group playbook, which does not decide budgets, and severity
-        # is now a property of the city's ClimateBaselines.severeThresholds
-        # rather than of a condition.
-        lines.append(
-            f"  - {name}: asset group name contains '{token}'; active when {test}"
+    values: Dict[str, Any] = {
+        "lookAheadHours": ads_config.get("lookAheadHours", 24),
+        "trailingWindowHours": ads_config.get("trailingWindowHours", 24),
+    }
+    tokens = ads_config.get("assetGroupTokens")
+    if isinstance(tokens, dict) and tokens:
+        values["assetGroupTokens"] = tokens
+    else:
+        logger.warning(
+            "GoogleAdsConfig/%s has no assetGroupTokens; the weather asset "
+            "group playbook cannot match any asset group and will be skipped.",
+            customer_id,
+            extra={"customer_id": str(customer_id)},
         )
-    return "\n".join(lines)
+    return values
 
 
 def _check_change_volume_guard(
@@ -511,9 +498,9 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
 
     # 3. Load shared, city-agnostic configuration.
     #
-    # Playbooks and condition definitions are shared across every campaign, so
-    # they are read once per run. This is what allows a new city to be four
-    # lines of config rather than a duplicated copy of the decision logic.
+    # Playbooks are shared across every campaign, so they are read once per
+    # run. This is what allows a new city to be four lines of config rather
+    # than a duplicated copy of the decision logic.
     referenced_playbooks: Set[str] = set()
     for campaign in campaigns:
         referenced_playbooks.update(playbooks_lib.resolve_playbook_ids(campaign))
@@ -522,9 +509,6 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         _load_playbook_library(firestore_toolset, referenced_playbooks)
         if referenced_playbooks
         else {}
-    )
-    weather_conditions = _load_weather_conditions(
-        firestore_toolset, ads_config.get("weatherConditionsId", "default")
     )
 
     account = ads_config.get("account", "")
@@ -535,9 +519,7 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
     # Values every playbook may reference, regardless of city.
     shared_values: Dict[str, Any] = {
         "globalInstruction": global_instruction,
-        "conditionsTable": _render_conditions_table(weather_conditions),
-        "lookAheadHours": weather_conditions.get("lookAheadHours", 24),
-        "trailingWindowHours": weather_conditions.get("trailingWindowHours", 24),
+        **_account_weather_values(ads_config, customer_id),
         "runsPerDay": schedule.get("runsPerDay", 2),
     }
 

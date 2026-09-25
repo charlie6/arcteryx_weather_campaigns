@@ -290,30 +290,27 @@ class TestSampleConfigRenders:
             for doc in documents
             if doc["collection_name"] == "Playbooks"
         }
-        conditions = next(
-            doc["data"]
-            for doc in documents
-            if doc["collection_name"] == "WeatherConditions"
-        )
         ads_config = next(
             doc["data"]
             for doc in documents
             if doc["collection_name"] == "GoogleAdsConfig"
         )
-        return library, conditions, ads_config
+        return library, ads_config
 
-    def _shared_values(self, conditions) -> Dict[str, Any]:
+    def _shared_values(self, ads_config) -> Dict[str, Any]:
+        # Mirrors agent._account_weather_values: windows and tokens come from
+        # the account document, not a separate WeatherConditions collection.
         return {
             "globalInstruction": "…",
-            "conditionsTable": "  - Cold: …",
-            "lookAheadHours": conditions.get("lookAheadHours", 24),
-            "trailingWindowHours": conditions.get("trailingWindowHours", 24),
+            "lookAheadHours": ads_config.get("lookAheadHours", 24),
+            "trailingWindowHours": ads_config.get("trailingWindowHours", 24),
+            "assetGroupTokens": ads_config["assetGroupTokens"],
             "runsPerDay": 2,
             "trailingWindowRuns": 2,
         }
 
     def test_every_campaign_resolves_at_least_one_playbook(self):
-        library, conditions, ads_config = self._load()
+        library, ads_config = self._load()
         for campaign in ads_config["campaigns"]:
             resolved = playbooks.resolve_campaign_instructions(
                 campaign=campaign,
@@ -326,12 +323,12 @@ class TestSampleConfigRenders:
                     account=ads_config["account"],
                     timezone_name=ads_config["schedule"]["timezone"],
                 ),
-                shared_values=self._shared_values(conditions),
+                shared_values=self._shared_values(ads_config),
             )
             assert resolved, f"Campaign {campaign['campaignId']} resolved to nothing"
 
     def test_no_rendered_instruction_retains_a_placeholder(self):
-        library, conditions, ads_config = self._load()
+        library, ads_config = self._load()
         for campaign in ads_config["campaigns"]:
             resolved = playbooks.resolve_campaign_instructions(
                 campaign=campaign,
@@ -344,7 +341,7 @@ class TestSampleConfigRenders:
                     account=ads_config["account"],
                     timezone_name=ads_config["schedule"]["timezone"],
                 ),
-                shared_values=self._shared_values(conditions),
+                shared_values=self._shared_values(ads_config),
             )
             for playbook_id, instruction in resolved:
                 assert not playbooks.find_placeholders(instruction), (
@@ -353,7 +350,7 @@ class TestSampleConfigRenders:
                 )
 
     def test_a_campaign_without_severe_modifiers_still_toggles_asset_groups(self):
-        library, conditions, ads_config = self._load()
+        library, ads_config = self._load()
         toronto = next(
             c for c in ads_config["campaigns"] if c["params"]["city"] == "Toronto ON"
         )
@@ -369,16 +366,104 @@ class TestSampleConfigRenders:
                 account="Canada",
                 timezone_name="America/Toronto",
             ),
-            shared_values=self._shared_values(conditions),
+            shared_values=self._shared_values(ads_config),
         )
         assert [pid for pid, _ in resolved] == ["weather_asset_groups"]
 
     def test_no_playbook_template_hardcodes_a_coordinate_or_campaign_name(self):
         # The regression this whole change exists to prevent.
-        library, _, _ = self._load()
+        library, _ = self._load()
         for playbook_id, playbook in library.items():
             template = playbook["template"]
             assert "49.2827" not in template, f"{playbook_id} hardcodes a latitude"
             assert "-123.1207" not in template, f"{playbook_id} hardcodes a longitude"
             assert "ARC_Performance" not in template, f"{playbook_id} hardcodes a campaign name"
             assert "ARC_Weather" not in template, f"{playbook_id} hardcodes an asset group name"
+
+    def _render_asset_groups(self, campaign_params):
+        library, ads_config = self._load()
+        return playbooks.render_campaign_playbook(
+            playbook_id="weather_asset_groups",
+            playbook=library["weather_asset_groups"],
+            campaign={"campaignId": 1, "params": campaign_params},
+            context=playbooks.build_context(
+                customer_id="1234567890",
+                campaign_id=1,
+                playbook_id="weather_asset_groups",
+                run_id="run",
+                account="Canada",
+                timezone_name="America/Toronto",
+            ),
+            shared_values=self._shared_values(ads_config),
+        )
+
+    def test_activation_rules_name_the_exact_signal_and_default_threshold(self):
+        # The old free-text rules left "temperature below 9" open to reading as
+        # the mean or current value. The template must pin min for Cold and max
+        # for Warm.
+        rendered = self._render_asset_groups({"city": "Vancouver BC"})
+        assert "min_temperature_c < 9.0" in rendered
+        assert "max_temperature_c > 10.0" in rendered
+        assert "max_rain_rate_mm_per_h >= 0.2" in rendered
+        assert "'_COLD_'" in rendered and "'_SUN_'" in rendered
+
+    def test_a_campaign_can_override_one_activation_threshold(self):
+        rendered = self._render_asset_groups(
+            {"city": "Chicago IL", "activation": {"coldBelowC": 0.0}}
+        )
+        assert "min_temperature_c < 0.0" in rendered
+        # The other thresholds keep the playbook defaults.
+        assert "max_temperature_c > 10.0" in rendered
+        assert "max_rain_rate_mm_per_h >= 0.2" in rendered
+
+    def test_missing_tokens_make_the_asset_group_playbook_unrenderable(self):
+        # Matching asset groups on a guessed token is worse than skipping.
+        library, ads_config = self._load()
+        shared = self._shared_values(ads_config)
+        del shared["assetGroupTokens"]
+        with pytest.raises(playbooks.PlaybookResolutionError):
+            playbooks.render_campaign_playbook(
+                playbook_id="weather_asset_groups",
+                playbook=library["weather_asset_groups"],
+                campaign={"campaignId": 1, "params": {"city": "Vancouver BC"}},
+                context=_context("weather_asset_groups"),
+                shared_values=shared,
+            )
+
+
+class TestAccountWeatherValues:
+    """agent._account_weather_values replaced the WeatherConditions collection."""
+
+    def _fn(self):
+        from agentic_dsta.agents.decision_agent import agent
+
+        return agent._account_weather_values
+
+    def test_reads_windows_and_tokens_from_the_account(self):
+        values = self._fn()(
+            {
+                "lookAheadHours": 12,
+                "trailingWindowHours": 36,
+                "assetGroupTokens": {"Cold": "_COLD"},
+            },
+            "1",
+        )
+        assert values == {
+            "lookAheadHours": 12,
+            "trailingWindowHours": 36,
+            "assetGroupTokens": {"Cold": "_COLD"},
+        }
+
+    def test_defaults_windows_to_24_hours(self):
+        values = self._fn()({"assetGroupTokens": {"Cold": "_COLD"}}, "1")
+        assert values["lookAheadHours"] == 24
+        assert values["trailingWindowHours"] == 24
+
+    def test_missing_tokens_are_left_absent_and_logged(self, caplog):
+        values = self._fn()({}, "1")
+        assert "assetGroupTokens" not in values
+        assert "no assetGroupTokens" in caplog.text
+
+    def test_a_stale_weather_conditions_id_is_flagged(self, caplog):
+        self._fn()({"weatherConditionsId": "sandbox", "assetGroupTokens": {"a": "b"}}, "1")
+        assert "no longer read" in caplog.text

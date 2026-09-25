@@ -286,7 +286,7 @@ def render_campaign_playbook(
     """Renders one playbook for one campaign.
 
     Precedence, lowest to highest: playbook ``defaults``, shared values (e.g.
-    the ``WeatherConditions`` document), campaign ``params``, runner context.
+    the account's asset group tokens and windows), campaign ``params``, runner context.
     Context wins outright so a config cannot misreport the campaign it is
     acting on.
 

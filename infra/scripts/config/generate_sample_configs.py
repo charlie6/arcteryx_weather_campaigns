@@ -67,7 +67,20 @@ If success is false, or hours_received is less than hours_requested, go to STEP 
 STEP 3 - Evaluate every condition INDEPENDENTLY.
 Do NOT stop at the first match. More than one condition can be true at the same time, for
 example Cold and Snow together during a cold snowstorm, and each has its own asset group.
-{{conditionsTable}}
+These are the spec section 3.2 activation rules. Use the named signal exactly; do not
+substitute a different temperature or an average.
+  Cold : min_temperature_c < {{activation.coldBelowC}}
+         (the LOWEST temperature in the look-ahead)
+         asset group name contains '{{assetGroupTokens.Cold}}'
+  Rain : max_rain_rate_mm_per_h >= {{activation.rainRateMmPerH}} AND rain_present is true
+         asset group name contains '{{assetGroupTokens.Rain}}'
+  Snow : snow_present is true
+         asset group name contains '{{assetGroupTokens.Snow}}'
+  Warm : max_temperature_c > {{activation.warmAboveC}}
+         (the HIGHEST temperature in the look-ahead)
+         asset group name contains '{{assetGroupTokens.Warm}}'
+Because Cold uses the minimum and Warm the maximum, both can be active on the same day.
+Evaluate each on its own and do not suppress one because the other is active.
 For each condition record whether it is active in this look-ahead, together with the observed
 value and the threshold you compared it against.
 
@@ -308,6 +321,14 @@ SHARED_PLAYBOOKS = [
             "defaults": {
                 "geo": "(unset)",
                 "campaignNameContains": None,
+                # Spec section 3.2 activation rules, the same for every city.
+                # A campaign may override any one of these in
+                # params.activation; the rest keep these values.
+                "activation": {
+                    "coldBelowC": 9.0,
+                    "warmAboveC": 10.0,
+                    "rainRateMmPerH": 0.2,
+                },
             },
             "template": ASSET_GROUP_PLAYBOOK,
         },
@@ -344,44 +365,6 @@ CONFIG = [
         "document_id": "1234567890",
         "data": {"instruction": GLOBAL_INSTRUCTION},
     },
-    {
-        "collection_name": "WeatherConditions",
-        "document_id": "default",
-        "data": {
-            "_comment": (
-                "Shared activation rules from spec section 3.2. These decide which weather "
-                "asset groups are enabled and are the same for every city. They are NOT the "
-                "severe-weather thresholds: those are per city, in "
-                "ClimateBaselines/<city>.severeThresholds. Changing a test here changes it "
-                "for every account using this document. Fields prefixed with an underscore "
-                "are documentation and are not read by the code."
-            ),
-            "lookAheadHours": 24,
-            "trailingWindowHours": 24,
-            "conditions": [
-                {
-                    "name": "Cold",
-                    "assetGroupToken": "_COLD_",
-                    "test": "min_temperature_c < 9.0",
-                },
-                {
-                    "name": "Rain",
-                    "assetGroupToken": "_RAIN_",
-                    "test": "max_rain_rate_mm_per_h >= 0.2 AND rain_present is true",
-                },
-                {
-                    "name": "Snow",
-                    "assetGroupToken": "_SNOW_",
-                    "test": "snow_present is true",
-                },
-                {
-                    "name": "Warm",
-                    "assetGroupToken": "_SUN_",
-                    "test": "max_temperature_c > 10.0",
-                },
-            ],
-        },
-    },
     *SHARED_PLAYBOOKS,
     {
         "collection_name": "GoogleAdsConfig",
@@ -405,7 +388,19 @@ CONFIG = [
                 "enabled": True,
                 "maxFractionOfEligibleCampaigns": 0.25,
             },
-            "weatherConditionsId": "default",
+            # Forecast window, and how long an asset group stays live after
+            # its condition leaves the forecast.
+            "lookAheadHours": 24,
+            "trailingWindowHours": 24,
+            # Substring that identifies each condition's asset group in THIS
+            # account's naming convention (ARC_Weather_Cold_VAN_..._FW25).
+            # Each token must match exactly one asset group per campaign.
+            "assetGroupTokens": {
+                "Cold": "_COLD_",
+                "Rain": "_RAIN_",
+                "Snow": "_SNOW_",
+                "Warm": "_SUN_",
+            },
             "campaigns": [
                 {
                     "campaignId": 1111111111,
@@ -487,55 +482,15 @@ CONFIG = [
 
 # The sandbox account is a live ADSTA test property. Its asset groups are named
 # Arcteryx_WEATHER_Snow rather than ARC_Weather_Snow_VAN_..., so the token that
-# identifies a condition differs from production. That is exactly why the token
-# lives in a WeatherConditions document rather than in the playbook text: the
-# same playbook serves both naming conventions.
+# identifies a condition differs from production. That is exactly why the tokens
+# live in the account's GoogleAdsConfig.assetGroupTokens rather than in the
+# playbook text: the same playbook serves both naming conventions.
 SANDBOX_CONFIG = [
     *SHARED_PLAYBOOKS,
     {
         "collection_name": "CustomerInstructions",
         "document_id": "5341114500",
         "data": {"instruction": GLOBAL_INSTRUCTION},
-    },
-    {
-        "collection_name": "WeatherConditions",
-        "document_id": "sandbox",
-        "data": {
-            "_comment": (
-                "Sandbox condition set. Tokens have no trailing underscore because the "
-                "sandbox asset groups are named Arcteryx_WEATHER_Snow, not "
-                "ARC_Weather_Snow_VAN_ENG_Neutral_Null_FW25. All four spec conditions "
-                "now have a matching asset group in the sandbox campaign "
-                "(Arcteryx_WEATHER_Cold, _Rain, _Snow and _Sun), so every condition "
-                "path can be validated end to end. Each token matches exactly one "
-                "asset group; the always-on group Arcteryx_AO_Core matches none and "
-                "is protected from pausing."
-            ),
-            "lookAheadHours": 24,
-            "trailingWindowHours": 24,
-            "conditions": [
-                {
-                    "name": "Cold",
-                    "assetGroupToken": "_COLD",
-                    "test": "min_temperature_c < 9.0",
-                },
-                {
-                    "name": "Rain",
-                    "assetGroupToken": "_RAIN",
-                    "test": "max_rain_rate_mm_per_h >= 0.2 AND rain_present is true",
-                },
-                {
-                    "name": "Snow",
-                    "assetGroupToken": "_SNOW",
-                    "test": "snow_present is true",
-                },
-                {
-                    "name": "Warm",
-                    "assetGroupToken": "_SUN",
-                    "test": "max_temperature_c > 10.0",
-                },
-            ],
-        },
     },
     {
         "collection_name": "GoogleAdsConfig",
@@ -553,7 +508,18 @@ SANDBOX_CONFIG = [
                 "enabled": True,
                 "maxFractionOfEligibleCampaigns": 0.25,
             },
-            "weatherConditionsId": "sandbox",
+            "lookAheadHours": 24,
+            "trailingWindowHours": 24,
+            # No trailing underscore: sandbox groups are named
+            # Arcteryx_WEATHER_Cold, not ARC_Weather_Cold_VAN_..._FW25. Each
+            # token matches exactly one group; the always-on Arcteryx_AO_Core
+            # matches none and is protected from pausing in code.
+            "assetGroupTokens": {
+                "Cold": "_COLD",
+                "Rain": "_RAIN",
+                "Snow": "_SNOW",
+                "Warm": "_SUN",
+            },
             "campaigns": [
                 {
                     "campaignId": 24252893412,
