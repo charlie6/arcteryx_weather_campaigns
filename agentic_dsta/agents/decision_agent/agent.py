@@ -278,7 +278,8 @@ def _account_weather_values(
         customer_id: Used only for log context.
 
     Returns:
-        A mapping of lookAheadHours, trailingWindowHours and assetGroupTokens.
+        A mapping of lookAheadHours, trailingWindowHours and assetGroupTokens,
+        with every token upper-cased.
         When tokens are missing they are left absent, so the asset group
         playbook fails to render and is skipped with a log line naming the
         token, rather than matching asset groups on a guess.
@@ -302,7 +303,13 @@ def _account_weather_values(
     }
     tokens = ads_config.get("assetGroupTokens")
     if isinstance(tokens, dict) and tokens:
-        values["assetGroupTokens"] = tokens
+        # Upper-cased here so the playbook only ever compares upper case with
+        # upper case. Left to the model, a lower-case entry such as "_sun"
+        # could silently fail to match and the asset group would never move.
+        values["assetGroupTokens"] = {
+            condition: str(token).strip().upper()
+            for condition, token in tokens.items()
+        }
     else:
         logger.warning(
             "GoogleAdsConfig/%s has no assetGroupTokens; the weather asset "

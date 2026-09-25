@@ -241,12 +241,12 @@ class TestSeverityThresholds(unittest.TestCase):
     rain = [0.2] * 28 + [10.0, 20.0, 30.0]
     result = builder.compute_city_baselines(CITY, make_daily(rain=rain,
                                                              days=31))
-    # Only the three real rain days define the distribution, so p98 must sit
+    # Only the three real rain days define the distribution, so the rain percentile must sit
     # inside their range rather than down among the drizzle.
     self.assertGreaterEqual(result["severe"]["rain_mm"], 10.0)
 
   def test_cold_threshold_is_the_lower_tail(self):
-    tmin = [-30.0] + [0.0] * 30
+    tmin = [-30.0, -25.0] + [0.0] * 29
     result = builder.compute_city_baselines(CITY, make_daily(tmin=tmin,
                                                              days=31))
     self.assertLess(result["severe"]["cold_c"], 0.0)

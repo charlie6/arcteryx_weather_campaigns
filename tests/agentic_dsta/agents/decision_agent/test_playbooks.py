@@ -447,6 +447,13 @@ class TestAccountWeatherValues:
 
         return agent._account_weather_values
 
+    def test_tokens_are_upper_cased(self):
+        # A lower-case token left to the model could silently fail to match.
+        values = self._fn()(
+            {"assetGroupTokens": {"Sunny": " _sun ", "Rain": "_Rain"}}, "1"
+        )
+        assert values["assetGroupTokens"] == {"Sunny": "_SUN", "Rain": "_RAIN"}
+
     def test_reads_windows_and_tokens_from_the_account(self):
         values = self._fn()(
             {

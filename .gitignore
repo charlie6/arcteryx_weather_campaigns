@@ -108,3 +108,7 @@ sessions.db
 
 # Local reference documents
 *.docx
+
+# Climate baseline builder scratch output (committed output lives in infra/config/baselines/)
+baselines_cache/
+baselines_out/

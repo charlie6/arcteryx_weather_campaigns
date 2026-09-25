@@ -69,8 +69,8 @@ per-city distribution can fix:
     It fires on 31 days a year in Saskatoon -- about one winter day in three --
     which is a seasonal budget increase rather than a severe-weather response.
 
-So alongside the means this job emits per-city percentiles: rain p98 and snow
-p95 over event days, and the p2 of daily minimum temperature. A percentile is
+So alongside the means this job emits per-city percentiles: rain p93 and snow
+p90 over event days, and the p5 of daily minimum temperature. A percentile is
 the operational definition of "unusual here", and because it is defined on the
 city's own distribution it yields a near-uniform trigger rate across a
 climatically diverse footprint -- measured at 1.4x spread between the most and
@@ -82,9 +82,15 @@ January day, and monthly pooling thins each bucket enough to make the tail
 estimate noisy.
 
 
-Usage:
-    python3 build_climate_baselines.py --out-dir ./baselines_out
-    python3 build_climate_baselines.py --cities "Vancouver BC,Calgary AB"
+Usage (from agentic_dsta/):
+    # Rebuild every city in infra/config/baselines/cities.json, writing to
+    # infra/config/baselines/, then regenerate the samples so they pick it up.
+    python3 infra/scripts/baselines/build_climate_baselines.py
+    python3 infra/scripts/config/generate_sample_configs.py
+
+    # Try out a new city without touching the committed output.
+    python3 infra/scripts/baselines/build_climate_baselines.py \
+        --cities "Vancouver BC,Calgary AB" --out-dir ./baselines_out
 """
 
 import argparse
@@ -134,21 +140,30 @@ OPEN_METEO_SNOW_TO_LIQUID_RATIO = 7.0
 MM_SWE_PER_CM_SNOW = 10.0 / OPEN_METEO_SNOW_TO_LIQUID_RATIO
 
 # Percentiles defining a severe day, chosen for the trigger rate they produce
-# rather than for statistical neatness. Measured over 1991-2020 across the
-# footprint, these yield roughly 1-3 rain days, 0-2 snow days and 7-8 cold days
-# per city per year: frequent enough to be worth automating, rare enough that
-# each firing is defensible to an advertiser.
+# rather than for statistical neatness.
+#
+# The first revision used rain p98, snow p95 and cold p2 (about 2 sigma). Over
+# 1991-2020 that fired on only 1-3 rain days and 0-2 snow days per city per
+# year, too rarely for the budget lever to matter. Rain and snow were loosened
+# to p93 and p90, roughly 3-4x as often (Vancouver: 12 rain, 3 snow days).
+#
+# Cold was loosened less, to p5 (about 18 days a year). Cold is taken over
+# every day of the year and clusters in winter, so a true 1 sigma setting (p16)
+# fired on ~59 days a year: most winter nights, which is a seasonal budget
+# increase rather than a severe-weather response, and which would leave the
+# 10-increased-days-per-30 cap deciding every winter month instead of the
+# weather.
 #
 # Rain and snow percentiles are taken over *event* days only. Including dry
 # days would drag both percentiles to zero in every city, since most days in
 # most months have no precipitation at all.
-RAIN_SEVERE_PERCENTILE = 98.0
-SNOW_SEVERE_PERCENTILE = 95.0
+RAIN_SEVERE_PERCENTILE = 93.0
+SNOW_SEVERE_PERCENTILE = 90.0
 
 # Cold is taken over every day of the year, not just cold ones. There is no
 # equivalent of a "dry day" to exclude, and the bottom tail of the full annual
 # distribution is exactly the quantity of interest.
-COLD_SEVERE_PERCENTILE = 2.0
+COLD_SEVERE_PERCENTILE = 5.0
 
 DAILY_VARIABLES = (
     "precipitation_sum",
@@ -814,7 +829,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
   )
   parser.add_argument("--start-date", default=DEFAULT_START_DATE)
   parser.add_argument("--end-date", default=DEFAULT_END_DATE)
-  parser.add_argument("--out-dir", default="./baselines_out")
+  # Defaults to the committed location that generate_sample_configs.py reads,
+  # so a plain rebuild refreshes every sample's baselines on regeneration.
+  parser.add_argument(
+      "--out-dir",
+      default=os.path.normpath(os.path.join(os.path.dirname(default_cities))),
+  )
   parser.add_argument("--cache-dir", default="./baselines_cache")
   parser.add_argument(
       "--sleep-seconds",

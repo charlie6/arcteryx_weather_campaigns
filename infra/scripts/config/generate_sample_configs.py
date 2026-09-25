@@ -25,16 +25,18 @@ JSON:
     python3 infra/scripts/config/generate_sample_configs.py
 
 `ClimateBaselines` numbers are never invented here. They come from real reanalysis
-data via `infra/scripts/baselines/build_climate_baselines.py` and are carried over
-from whatever is already in the target file. This script does reshape them: the
-three fields a playbook actually reads stay at the top level and everything else
-is nested under `_provenance`, so no one mistakes a monthly average for a
-threshold. Where the two sample files disagree about a city, the richer document
-wins, which reconciles a divergence the per-file copies had already accumulated.
+data via `infra/scripts/baselines/build_climate_baselines.py`, whose output for
+every city in `infra/config/baselines/cities.json` is committed at
+`infra/config/baselines/climate_baselines_firestore.json`. Every sample includes
+all of those cities, so pointing a campaign at any listed city needs no baseline
+work at all. This script only reshapes them: the three fields a playbook reads
+stay at the top level and everything else is nested under `_provenance`, so no
+one mistakes a monthly average for a threshold.
 """
 
 import json
 import pathlib
+from typing import Any, Dict, List
 
 ASSET_GROUP_PLAYBOOK = """MODE: live writes are controlled in code by the ADSTA_DRY_RUN environment variable, not by
 this prompt. Call the tools you judge correct. If a tool returns dry_run=true the write was
@@ -102,7 +104,8 @@ condition leaves the look-ahead. It is only paused once neither this run nor the
 
 STEP 5 - Apply to the account.
 Call list_google_ads_asset_groups(customer_id '{{customerId}}', campaign_id '{{campaignId}}').
-Match asset groups to conditions using the token listed in STEP 3, comparing upper-cased names.
+Match asset groups to conditions using the token listed in STEP 3. The tokens are already upper
+case: upper-case each asset group name, then check whether it contains the token.
   - If {{campaignNameContains}} is not null, verify that the returned campaign_name contains
     that text. If it does not, make NO changes and report a naming mismatch: the campaign may
     have been renamed, or the config may point at the wrong campaign.
@@ -582,6 +585,10 @@ SANDBOX_CONFIG = [
 
 TEST_CONFIG_PATH = "infra/config/samples/arcteryx_test_firestore_config.json"
 SANDBOX_CONFIG_PATH = "infra/config/samples/arcteryx_sandbox_firestore_config.json"
+# Output of build_climate_baselines.py for every city in cities.json. Rebuild
+# with: python3 infra/scripts/baselines/build_climate_baselines.py
+#           --out-dir infra/config/baselines
+BASELINES_PATH = "infra/config/baselines/climate_baselines_firestore.json"
 
 # The only ClimateBaselines fields any playbook reads. Everything else in the
 # document describes how the numbers were derived.
@@ -620,74 +627,25 @@ def _normalise_baseline(document):
     return {**document, "data": data}
 
 
-def _baseline_rank(document):
-    """Scores a baseline document by completeness, for de-duplication.
+def _load_baselines(path: str = BASELINES_PATH) -> List[Dict[str, Any]]:
+    """Loads the committed ClimateBaselines documents for every known city.
 
     Args:
-        document: A normalised ClimateBaselines entry.
+        path: The build_climate_baselines.py Firestore output, relative to the
+            repository's agentic_dsta directory.
 
     Returns:
-        A sort key where a document carrying severeThresholds always wins.
+        Normalised ClimateBaselines entries, sorted by city.
+
+    Raises:
+        FileNotFoundError: If the baselines file has not been built.
     """
-    data = document.get("data", {})
-    return (
-        1 if data.get("severeThresholds") else 0,
-        len(json.dumps(data, sort_keys=True)),
-    )
-
-
-def _canonical_baselines(paths):
-    """Builds the best-known baseline document per city across the sample files.
-
-    The samples each preserved their own copy and had already diverged: the
-    sandbox seed carried severeThresholds while the test seed predated the
-    field, and nothing would ever have reconciled them. Taking the richest
-    version of each city heals that and keeps the two files consistent.
-
-    Args:
-        paths: Sample file paths to read.
-
-    Returns:
-        A mapping of city document id to normalised ClimateBaselines entry.
-    """
-    canonical = {}
-    for path in paths:
-        target = pathlib.Path(path)
-        if not target.exists():
-            continue
-        for item in json.loads(target.read_text()):
-            if item.get("collection_name") != "ClimateBaselines":
-                continue
-            normalised = _normalise_baseline(item)
-            city = normalised.get("document_id")
-            incumbent = canonical.get(city)
-            if incumbent is None or _baseline_rank(normalised) > _baseline_rank(incumbent):
-                canonical[city] = normalised
-    return canonical
-
-
-def _write(path: str, documents, canonical) -> None:
-    """Writes a config file, preserving the ClimateBaselines entries it already had.
-
-    Climate baselines come from real reanalysis data via
-    infra/scripts/baselines/build_climate_baselines.py, so they are carried over
-    rather than regenerated. Each file keeps its own set of cities; only the
-    content of those documents is taken from the canonical set.
-
-    Args:
-        path: Destination path relative to the repository's agentic_dsta directory.
-        documents: The documents to write after the preserved baselines.
-        canonical: Best-known baseline per city, from _canonical_baselines.
-    """
-    target = pathlib.Path(path)
-    baselines = []
-    if target.exists():
-        for item in json.loads(target.read_text()):
-            if item.get("collection_name") != "ClimateBaselines":
-                continue
-            city = item.get("document_id")
-            baselines.append(canonical.get(city) or _normalise_baseline(item))
-
+    documents = json.loads(pathlib.Path(path).read_text())
+    baselines = [
+        _normalise_baseline(item)
+        for item in documents
+        if item.get("collection_name") == "ClimateBaselines"
+    ]
     missing = [
         b["document_id"]
         for b in baselines
@@ -697,12 +655,24 @@ def _write(path: str, documents, canonical) -> None:
         # Not fatal here, but the severe_budget playbook stops for these cities
         # rather than guessing, so surface it at generation time.
         print(f"  WARNING: no severeThresholds for {', '.join(missing)}")
+    return sorted(baselines, key=lambda b: b["document_id"])
 
+
+def _write(
+    path: str, documents: List[Dict[str, Any]], baselines: List[Dict[str, Any]]
+) -> None:
+    """Writes a config file: every city's baseline, then the given documents.
+
+    Args:
+        path: Destination path relative to the repository's agentic_dsta directory.
+        documents: The non-baseline documents to write.
+        baselines: ClimateBaselines entries from _load_baselines.
+    """
     _check_campaign_cities(documents, {b["document_id"] for b in baselines})
-
     output = baselines + documents
+    target = pathlib.Path(path)
     target.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n")
-    print(f"Wrote {target} with {len(output)} documents.")
+    print(f"Wrote {target} with {len(output)} documents ({len(baselines)} cities).")
 
 
 def _check_campaign_cities(documents, baseline_cities) -> None:
@@ -732,10 +702,9 @@ def _check_campaign_cities(documents, baseline_cities) -> None:
 
 def main() -> None:
     """Regenerates both sample configs."""
-    paths = [TEST_CONFIG_PATH, SANDBOX_CONFIG_PATH]
-    canonical = _canonical_baselines(paths)
-    _write(TEST_CONFIG_PATH, CONFIG, canonical)
-    _write(SANDBOX_CONFIG_PATH, SANDBOX_CONFIG, canonical)
+    baselines = _load_baselines()
+    _write(TEST_CONFIG_PATH, CONFIG, baselines)
+    _write(SANDBOX_CONFIG_PATH, SANDBOX_CONFIG, baselines)
 
 
 if __name__ == "__main__":

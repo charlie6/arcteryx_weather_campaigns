@@ -1,0 +1,5639 @@
+{
+  "source": "ERA5 via Open-Meteo archive",
+  "period": {
+    "start": "1991-01-01",
+    "end": "2020-12-31"
+  },
+  "wet_day_threshold_mm": 1.0,
+  "snow_units": "mm water equivalent",
+  "cities": [
+    {
+      "city": "New York NY",
+      "account": "United States",
+      "country": "US",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timezone": "America/New_York",
+      "grid_elevation_m": 32.0,
+      "years_covered": 30,
+      "annual_rain_mm": 1036.9,
+      "annual_snow_mm_swe": 94.4,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 9.04,
+          "wet_days_per_month": 6.4,
+          "snow_mm_swe_per_snow_day": 5.32,
+          "snow_days_per_month": 4.27,
+          "mean_daily_min_c": -4.43,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 7.98,
+          "wet_days_per_month": 6.2,
+          "snow_mm_swe_per_snow_day": 7.47,
+          "snow_days_per_month": 3.57,
+          "mean_daily_min_c": -4.16,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 9.82,
+          "wet_days_per_month": 8.5,
+          "snow_mm_swe_per_snow_day": 7.29,
+          "snow_days_per_month": 2.97,
+          "mean_daily_min_c": -0.25,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 8.13,
+          "wet_days_per_month": 10.73,
+          "snow_mm_swe_per_snow_day": 6.47,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 5.52,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.67,
+          "wet_days_per_month": 10.93,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.26,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.82,
+          "wet_days_per_month": 11.23,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.76,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 9.15,
+          "wet_days_per_month": 11.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 20.07,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 9.71,
+          "wet_days_per_month": 10.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 19.45,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 10.43,
+          "wet_days_per_month": 9.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.89,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 11.25,
+          "wet_days_per_month": 8.53,
+          "snow_mm_swe_per_snow_day": 11.1,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 9.67,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 9.08,
+          "wet_days_per_month": 8.13,
+          "snow_mm_swe_per_snow_day": 5.67,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 3.78,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 10.27,
+          "wet_days_per_month": 8.3,
+          "snow_mm_swe_per_snow_day": 5.71,
+          "snow_days_per_month": 2.5,
+          "mean_daily_min_c": -1.02,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -3.2
+        },
+        "spring": {
+          "cold_baseline_c": 5.5
+        },
+        "summer": {
+          "cold_baseline_c": 18.8
+        },
+        "autumn": {
+          "cold_baseline_c": 9.8
+        }
+      },
+      "severe": {
+        "rain_mm": 25.4,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.73,
+        "snow_mm_swe": 15.1,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 1.43,
+        "cold_c": -7.5,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.27
+      },
+      "warnings": []
+    },
+    {
+      "city": "San Francisco CA",
+      "account": "United States",
+      "country": "US",
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "timezone": "America/Los_Angeles",
+      "grid_elevation_m": 18.0,
+      "years_covered": 30,
+      "annual_rain_mm": 489.7,
+      "annual_snow_mm_swe": 0.0,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 9.96,
+          "wet_days_per_month": 9.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 6.38,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 10.8,
+          "wet_days_per_month": 9.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 7.26,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 8.4,
+          "wet_days_per_month": 8.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.33,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.16,
+          "wet_days_per_month": 4.8,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.07,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.24,
+          "wet_days_per_month": 3.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.61,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 3.8,
+          "wet_days_per_month": 0.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.92,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 1.85,
+          "wet_days_per_month": 0.2,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.82,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.05,
+          "wet_days_per_month": 0.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.37,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 2.83,
+          "wet_days_per_month": 0.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.2,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.24,
+          "wet_days_per_month": 2.9,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.96,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.91,
+          "wet_days_per_month": 5.8,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.97,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 9.48,
+          "wet_days_per_month": 9.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 6.63,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 6.7
+        },
+        "spring": {
+          "cold_baseline_c": 9.3
+        },
+        "summer": {
+          "cold_baseline_c": 12.7
+        },
+        "autumn": {
+          "cold_baseline_c": 11.4
+        }
+      },
+      "severe": {
+        "rain_mm": 21.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 3.9,
+        "snow_mm_swe": null,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": null,
+        "cold_c": 4.2,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.77
+      },
+      "warnings": [
+        "no qualifying snow days in the record; the snow trigger will never fire for this city"
+      ]
+    },
+    {
+      "city": "Seattle WA",
+      "account": "United States",
+      "country": "US",
+      "latitude": 47.6062,
+      "longitude": -122.3321,
+      "timezone": "America/Los_Angeles",
+      "grid_elevation_m": 59.0,
+      "years_covered": 30,
+      "annual_rain_mm": 1267.2,
+      "annual_snow_mm_swe": 29.1,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 9.31,
+          "wet_days_per_month": 17.73,
+          "snow_mm_swe_per_snow_day": 3.19,
+          "snow_days_per_month": 2.2,
+          "mean_daily_min_c": 1.76,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 7.96,
+          "wet_days_per_month": 13.9,
+          "snow_mm_swe_per_snow_day": 3.73,
+          "snow_days_per_month": 1.47,
+          "mean_daily_min_c": 1.6,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 7.7,
+          "wet_days_per_month": 17.13,
+          "snow_mm_swe_per_snow_day": 2.1,
+          "snow_days_per_month": 0.73,
+          "mean_daily_min_c": 3.08,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.28,
+          "wet_days_per_month": 14.9,
+          "snow_mm_swe_per_snow_day": 1.9,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 4.99,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.26,
+          "wet_days_per_month": 11.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.29,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.95,
+          "wet_days_per_month": 9.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.07,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 4.62,
+          "wet_days_per_month": 5.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.68,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.84,
+          "wet_days_per_month": 4.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.96,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.27,
+          "wet_days_per_month": 8.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.5,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.09,
+          "wet_days_per_month": 14.07,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 7.65,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 10.54,
+          "wet_days_per_month": 17.9,
+          "snow_mm_swe_per_snow_day": 5.74,
+          "snow_days_per_month": 0.53,
+          "mean_daily_min_c": 4.14,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 9.69,
+          "wet_days_per_month": 17.1,
+          "snow_mm_swe_per_snow_day": 4.13,
+          "snow_days_per_month": 1.97,
+          "mean_daily_min_c": 1.75,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 1.7
+        },
+        "spring": {
+          "cold_baseline_c": 5.5
+        },
+        "summer": {
+          "cold_baseline_c": 12.9
+        },
+        "autumn": {
+          "cold_baseline_c": 7.8
+        }
+      },
+      "severe": {
+        "rain_mm": 20.9,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 10.73,
+        "snow_mm_swe": 7.0,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 0.7,
+        "cold_c": -1.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.9
+      },
+      "warnings": []
+    },
+    {
+      "city": "Los Angeles CA",
+      "account": "United States",
+      "country": "US",
+      "latitude": 34.0522,
+      "longitude": -118.2437,
+      "timezone": "America/Los_Angeles",
+      "grid_elevation_m": 91.0,
+      "years_covered": 30,
+      "annual_rain_mm": 347.3,
+      "annual_snow_mm_swe": 0.0,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 14.79,
+          "wet_days_per_month": 5.43,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 7.05,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 14.3,
+          "wet_days_per_month": 5.9,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 7.48,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 9.7,
+          "wet_days_per_month": 5.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.73,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.44,
+          "wet_days_per_month": 2.57,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.18,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.17,
+          "wet_days_per_month": 1.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.71,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 4.57,
+          "wet_days_per_month": 0.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.13,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 3.66,
+          "wet_days_per_month": 0.43,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.96,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 1.96,
+          "wet_days_per_month": 0.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 18.63,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.5,
+          "wet_days_per_month": 0.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.36,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 8.24,
+          "wet_days_per_month": 1.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.98,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 8.43,
+          "wet_days_per_month": 2.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.02,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 11.42,
+          "wet_days_per_month": 4.47,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 6.79,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 7.1
+        },
+        "spring": {
+          "cold_baseline_c": 10.5
+        },
+        "summer": {
+          "cold_baseline_c": 17.3
+        },
+        "autumn": {
+          "cold_baseline_c": 13.8
+        }
+      },
+      "severe": {
+        "rain_mm": 32.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 2.2,
+        "snow_mm_swe": null,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": null,
+        "cold_c": 4.2,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.37
+      },
+      "warnings": [
+        "no qualifying snow days in the record; the snow trigger will never fire for this city"
+      ]
+    },
+    {
+      "city": "Boston MA",
+      "account": "United States",
+      "country": "US",
+      "latitude": 42.3601,
+      "longitude": -71.0589,
+      "timezone": "America/New_York",
+      "grid_elevation_m": 9.0,
+      "years_covered": 30,
+      "annual_rain_mm": 979.5,
+      "annual_snow_mm_swe": 152.3,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.45,
+          "wet_days_per_month": 6.63,
+          "snow_mm_swe_per_snow_day": 6.37,
+          "snow_days_per_month": 5.6,
+          "mean_daily_min_c": -6.85,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 8.1,
+          "wet_days_per_month": 5.83,
+          "snow_mm_swe_per_snow_day": 6.55,
+          "snow_days_per_month": 5.27,
+          "mean_daily_min_c": -5.97,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 9.28,
+          "wet_days_per_month": 8.77,
+          "snow_mm_swe_per_snow_day": 7.12,
+          "snow_days_per_month": 4.7,
+          "mean_daily_min_c": -2.15,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 8.45,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 8.04,
+          "snow_days_per_month": 1.03,
+          "mean_daily_min_c": 3.77,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.31,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.55,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.35,
+          "wet_days_per_month": 10.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.11,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.29,
+          "wet_days_per_month": 9.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 18.66,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.98,
+          "wet_days_per_month": 9.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 18.09,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 10.82,
+          "wet_days_per_month": 8.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.36,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 10.83,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": 8.77,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 8.31,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 9.67,
+          "wet_days_per_month": 9.27,
+          "snow_mm_swe_per_snow_day": 4.66,
+          "snow_days_per_month": 0.77,
+          "mean_daily_min_c": 2.59,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 9.61,
+          "wet_days_per_month": 8.67,
+          "snow_mm_swe_per_snow_day": 7.28,
+          "snow_days_per_month": 4.13,
+          "mean_daily_min_c": -2.83,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -5.2
+        },
+        "spring": {
+          "cold_baseline_c": 3.7
+        },
+        "summer": {
+          "cold_baseline_c": 17.3
+        },
+        "autumn": {
+          "cold_baseline_c": 8.4
+        }
+      },
+      "severe": {
+        "rain_mm": 25.3,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.6,
+        "snow_mm_swe": 16.8,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.17,
+        "cold_c": -10.8,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.27
+      },
+      "warnings": []
+    },
+    {
+      "city": "Chicago IL",
+      "account": "United States",
+      "country": "US",
+      "latitude": 41.8781,
+      "longitude": -87.6298,
+      "timezone": "America/Chicago",
+      "grid_elevation_m": 241.0,
+      "years_covered": 30,
+      "annual_rain_mm": 866.9,
+      "annual_snow_mm_swe": 101.7,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 7.31,
+          "wet_days_per_month": 4.3,
+          "snow_mm_swe_per_snow_day": 4.07,
+          "snow_days_per_month": 6.23,
+          "mean_daily_min_c": -7.25,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 8.05,
+          "wet_days_per_month": 3.67,
+          "snow_mm_swe_per_snow_day": 4.4,
+          "snow_days_per_month": 5.1,
+          "mean_daily_min_c": -6.67,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.94,
+          "wet_days_per_month": 7.33,
+          "snow_mm_swe_per_snow_day": 4.5,
+          "snow_days_per_month": 3.0,
+          "mean_daily_min_c": -1.92,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 8.35,
+          "wet_days_per_month": 11.47,
+          "snow_mm_swe_per_snow_day": 5.17,
+          "snow_days_per_month": 1.1,
+          "mean_daily_min_c": 4.18,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 8.8,
+          "wet_days_per_month": 12.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.95,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.02,
+          "wet_days_per_month": 11.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.37,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.84,
+          "wet_days_per_month": 11.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 20.48,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.33,
+          "wet_days_per_month": 11.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 19.99,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.27,
+          "wet_days_per_month": 9.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.08,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 8.84,
+          "wet_days_per_month": 9.43,
+          "snow_mm_swe_per_snow_day": 4.12,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 9.39,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.18,
+          "wet_days_per_month": 8.4,
+          "snow_mm_swe_per_snow_day": 4.28,
+          "snow_days_per_month": 1.2,
+          "mean_daily_min_c": 2.5,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 6.39,
+          "wet_days_per_month": 5.73,
+          "snow_mm_swe_per_snow_day": 4.46,
+          "snow_days_per_month": 4.5,
+          "mean_daily_min_c": -3.28,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -5.7
+        },
+        "spring": {
+          "cold_baseline_c": 4.4
+        },
+        "summer": {
+          "cold_baseline_c": 19.3
+        },
+        "autumn": {
+          "cold_baseline_c": 9.3
+        }
+      },
+      "severe": {
+        "rain_mm": 21.3,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.43,
+        "snow_mm_swe": 10.0,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.17,
+        "cold_c": -11.2,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.53
+      },
+      "warnings": []
+    },
+    {
+      "city": "Denver CO",
+      "account": "United States",
+      "country": "US",
+      "latitude": 39.7392,
+      "longitude": -104.9903,
+      "timezone": "America/Denver",
+      "grid_elevation_m": 1599.0,
+      "years_covered": 30,
+      "annual_rain_mm": 326.9,
+      "annual_snow_mm_swe": 173.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 2.05,
+          "wet_days_per_month": 0.5,
+          "snow_mm_swe_per_snow_day": 3.96,
+          "snow_days_per_month": 5.03,
+          "mean_daily_min_c": -9.01,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 1.77,
+          "wet_days_per_month": 0.77,
+          "snow_mm_swe_per_snow_day": 3.55,
+          "snow_days_per_month": 5.53,
+          "mean_daily_min_c": -8.41,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 3.49,
+          "wet_days_per_month": 3.83,
+          "snow_mm_swe_per_snow_day": 5.62,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -4.38,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.71,
+          "wet_days_per_month": 7.53,
+          "snow_mm_swe_per_snow_day": 6.37,
+          "snow_days_per_month": 4.8,
+          "mean_daily_min_c": -0.16,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.41,
+          "wet_days_per_month": 11.03,
+          "snow_mm_swe_per_snow_day": 5.33,
+          "snow_days_per_month": 1.07,
+          "mean_daily_min_c": 5.6,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.99,
+          "wet_days_per_month": 7.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.27,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 4.93,
+          "wet_days_per_month": 7.43,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.95,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.49,
+          "wet_days_per_month": 6.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.21,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.65,
+          "wet_days_per_month": 5.37,
+          "snow_mm_swe_per_snow_day": 5.52,
+          "snow_days_per_month": 0.47,
+          "mean_daily_min_c": 9.86,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 4.89,
+          "wet_days_per_month": 4.97,
+          "snow_mm_swe_per_snow_day": 6.71,
+          "snow_days_per_month": 2.03,
+          "mean_daily_min_c": 2.77,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 2.97,
+          "wet_days_per_month": 1.8,
+          "snow_mm_swe_per_snow_day": 4.6,
+          "snow_days_per_month": 4.97,
+          "mean_daily_min_c": -4.39,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 2.42,
+          "wet_days_per_month": 0.4,
+          "snow_mm_swe_per_snow_day": 3.85,
+          "snow_days_per_month": 4.9,
+          "mean_daily_min_c": -9.16,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -8.9
+        },
+        "spring": {
+          "cold_baseline_c": 0.4
+        },
+        "summer": {
+          "cold_baseline_c": 13.5
+        },
+        "autumn": {
+          "cold_baseline_c": 2.7
+        }
+      },
+      "severe": {
+        "rain_mm": 14.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 4.13,
+        "snow_mm_swe": 9.7,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.53,
+        "cold_c": -15.1,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.67
+      },
+      "warnings": []
+    },
+    {
+      "city": "Toronto ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 43.6532,
+      "longitude": -79.3832,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 99.0,
+      "years_covered": 30,
+      "annual_rain_mm": 683.6,
+      "annual_snow_mm_swe": 131.1,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 6.65,
+          "wet_days_per_month": 4.9,
+          "snow_mm_swe_per_snow_day": 3.77,
+          "snow_days_per_month": 7.13,
+          "mean_daily_min_c": -7.49,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.71,
+          "wet_days_per_month": 3.43,
+          "snow_mm_swe_per_snow_day": 4.76,
+          "snow_days_per_month": 6.17,
+          "mean_daily_min_c": -8.15,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.46,
+          "wet_days_per_month": 6.27,
+          "snow_mm_swe_per_snow_day": 4.49,
+          "snow_days_per_month": 4.57,
+          "mean_daily_min_c": -4.0,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.82,
+          "wet_days_per_month": 10.17,
+          "snow_mm_swe_per_snow_day": 4.28,
+          "snow_days_per_month": 1.73,
+          "mean_daily_min_c": 2.13,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.79,
+          "wet_days_per_month": 10.33,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.44,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.2,
+          "wet_days_per_month": 10.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.57,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.97,
+          "wet_days_per_month": 9.93,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 18.14,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.11,
+          "wet_days_per_month": 8.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 18.0,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.64,
+          "wet_days_per_month": 8.8,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.57,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.08,
+          "wet_days_per_month": 10.4,
+          "snow_mm_swe_per_snow_day": 1.77,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 8.35,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 6.53,
+          "wet_days_per_month": 8.77,
+          "snow_mm_swe_per_snow_day": 3.78,
+          "snow_days_per_month": 2.2,
+          "mean_daily_min_c": 2.23,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.3,
+          "wet_days_per_month": 6.23,
+          "snow_mm_swe_per_snow_day": 4.55,
+          "snow_days_per_month": 5.77,
+          "mean_daily_min_c": -3.03,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -6.2
+        },
+        "spring": {
+          "cold_baseline_c": 2.2
+        },
+        "summer": {
+          "cold_baseline_c": 16.9
+        },
+        "autumn": {
+          "cold_baseline_c": 8.4
+        }
+      },
+      "severe": {
+        "rain_mm": 17.7,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 6.97,
+        "snow_mm_swe": 9.5,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.77,
+        "cold_c": -12.4,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Ottawa ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 45.4215,
+      "longitude": -75.6972,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 76.0,
+      "years_covered": 30,
+      "annual_rain_mm": 819.7,
+      "annual_snow_mm_swe": 215.2,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.74,
+          "wet_days_per_month": 3.3,
+          "snow_mm_swe_per_snow_day": 4.45,
+          "snow_days_per_month": 9.67,
+          "mean_daily_min_c": -14.16,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.51,
+          "wet_days_per_month": 2.8,
+          "snow_mm_swe_per_snow_day": 4.75,
+          "snow_days_per_month": 8.2,
+          "mean_daily_min_c": -12.85,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.36,
+          "wet_days_per_month": 5.37,
+          "snow_mm_swe_per_snow_day": 5.22,
+          "snow_days_per_month": 6.9,
+          "mean_daily_min_c": -7.03,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.35,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": 5.12,
+          "snow_days_per_month": 3.1,
+          "mean_daily_min_c": 0.52,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.71,
+          "wet_days_per_month": 11.0,
+          "snow_mm_swe_per_snow_day": 3.53,
+          "snow_days_per_month": 0.2,
+          "mean_daily_min_c": 7.84,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.53,
+          "wet_days_per_month": 11.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.42,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.78,
+          "wet_days_per_month": 12.23,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.46,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.94,
+          "wet_days_per_month": 11.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.99,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.1,
+          "wet_days_per_month": 10.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.06,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.84,
+          "wet_days_per_month": 11.9,
+          "snow_mm_swe_per_snow_day": 4.9,
+          "snow_days_per_month": 0.67,
+          "mean_daily_min_c": 5.67,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.16,
+          "wet_days_per_month": 8.6,
+          "snow_mm_swe_per_snow_day": 4.53,
+          "snow_days_per_month": 4.2,
+          "mean_daily_min_c": -0.74,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 7.06,
+          "wet_days_per_month": 4.67,
+          "snow_mm_swe_per_snow_day": 4.9,
+          "snow_days_per_month": 9.17,
+          "mean_daily_min_c": -7.92,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -11.6
+        },
+        "spring": {
+          "cold_baseline_c": 0.4
+        },
+        "summer": {
+          "cold_baseline_c": 15.3
+        },
+        "autumn": {
+          "cold_baseline_c": 5.7
+        }
+      },
+      "severe": {
+        "rain_mm": 20.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.33,
+        "snow_mm_swe": 10.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.3,
+        "cold_c": -18.9,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Calgary AB",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 51.0447,
+      "longitude": -114.0719,
+      "timezone": "America/Edmonton",
+      "grid_elevation_m": 1051.0,
+      "years_covered": 30,
+      "annual_rain_mm": 372.1,
+      "annual_snow_mm_swe": 130.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 1.57,
+          "wet_days_per_month": 0.1,
+          "snow_mm_swe_per_snow_day": 2.62,
+          "snow_days_per_month": 4.53,
+          "mean_daily_min_c": -12.78,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 2.35,
+          "wet_days_per_month": 0.07,
+          "snow_mm_swe_per_snow_day": 2.73,
+          "snow_days_per_month": 4.1,
+          "mean_daily_min_c": -11.08,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 2.01,
+          "wet_days_per_month": 1.1,
+          "snow_mm_swe_per_snow_day": 3.12,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -7.35,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 3.17,
+          "wet_days_per_month": 5.07,
+          "snow_mm_swe_per_snow_day": 3.79,
+          "snow_days_per_month": 5.13,
+          "mean_daily_min_c": -1.91,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.62,
+          "wet_days_per_month": 10.5,
+          "snow_mm_swe_per_snow_day": 5.03,
+          "snow_days_per_month": 2.13,
+          "mean_daily_min_c": 3.24,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.44,
+          "wet_days_per_month": 13.77,
+          "snow_mm_swe_per_snow_day": 2.85,
+          "snow_days_per_month": 0.07,
+          "mean_daily_min_c": 7.9,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 5.38,
+          "wet_days_per_month": 10.93,
+          "snow_mm_swe_per_snow_day": 1.5,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 10.88,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.39,
+          "wet_days_per_month": 9.7,
+          "snow_mm_swe_per_snow_day": 5.5,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 10.17,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.15,
+          "wet_days_per_month": 7.23,
+          "snow_mm_swe_per_snow_day": 4.88,
+          "snow_days_per_month": 0.83,
+          "mean_daily_min_c": 5.75,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 3.08,
+          "wet_days_per_month": 4.03,
+          "snow_mm_swe_per_snow_day": 3.53,
+          "snow_days_per_month": 3.1,
+          "mean_daily_min_c": -0.35,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 2.04,
+          "wet_days_per_month": 0.83,
+          "snow_mm_swe_per_snow_day": 3.3,
+          "snow_days_per_month": 5.13,
+          "mean_daily_min_c": -6.9,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 1.35,
+          "wet_days_per_month": 0.07,
+          "snow_mm_swe_per_snow_day": 2.93,
+          "snow_days_per_month": 4.53,
+          "mean_daily_min_c": -12.03,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -12.0
+        },
+        "spring": {
+          "cold_baseline_c": -2.0
+        },
+        "summer": {
+          "cold_baseline_c": 9.7
+        },
+        "autumn": {
+          "cold_baseline_c": -0.5
+        }
+      },
+      "severe": {
+        "rain_mm": 16.0,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 4.47,
+        "snow_mm_swe": 6.5,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.67,
+        "cold_c": -20.5,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Edmonton AB",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 53.5461,
+      "longitude": -113.4938,
+      "timezone": "America/Edmonton",
+      "grid_elevation_m": 669.0,
+      "years_covered": 30,
+      "annual_rain_mm": 367.2,
+      "annual_snow_mm_swe": 114.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 1.78,
+          "wet_days_per_month": 0.47,
+          "snow_mm_swe_per_snow_day": 3.05,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -16.41,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 1.97,
+          "wet_days_per_month": 0.3,
+          "snow_mm_swe_per_snow_day": 2.48,
+          "snow_days_per_month": 4.1,
+          "mean_daily_min_c": -14.41,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 1.93,
+          "wet_days_per_month": 0.9,
+          "snow_mm_swe_per_snow_day": 2.92,
+          "snow_days_per_month": 5.03,
+          "mean_daily_min_c": -9.28,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.03,
+          "wet_days_per_month": 4.17,
+          "snow_mm_swe_per_snow_day": 4.6,
+          "snow_days_per_month": 2.93,
+          "mean_daily_min_c": -1.83,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.74,
+          "wet_days_per_month": 8.0,
+          "snow_mm_swe_per_snow_day": 5.42,
+          "snow_days_per_month": 0.8,
+          "mean_daily_min_c": 4.95,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 6.44,
+          "wet_days_per_month": 13.37,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.02,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.35,
+          "wet_days_per_month": 13.47,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.68,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.85,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.78,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 4.96,
+          "wet_days_per_month": 7.17,
+          "snow_mm_swe_per_snow_day": 3.95,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 6.98,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 3.12,
+          "wet_days_per_month": 4.3,
+          "snow_mm_swe_per_snow_day": 3.66,
+          "snow_days_per_month": 2.07,
+          "mean_daily_min_c": 0.1,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 2.29,
+          "wet_days_per_month": 1.3,
+          "snow_mm_swe_per_snow_day": 3.33,
+          "snow_days_per_month": 5.27,
+          "mean_daily_min_c": -8.47,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 1.39,
+          "wet_days_per_month": 0.43,
+          "snow_mm_swe_per_snow_day": 2.52,
+          "snow_days_per_month": 5.53,
+          "mean_daily_min_c": -14.99,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -15.3
+        },
+        "spring": {
+          "cold_baseline_c": -2.1
+        },
+        "summer": {
+          "cold_baseline_c": 11.5
+        },
+        "autumn": {
+          "cold_baseline_c": -0.5
+        }
+      },
+      "severe": {
+        "rain_mm": 15.0,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 4.5,
+        "snow_mm_swe": 6.4,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.23,
+        "cold_c": -23.9,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.57
+      },
+      "warnings": []
+    },
+    {
+      "city": "Vancouver BC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 49.2827,
+      "longitude": -123.1207,
+      "timezone": "America/Vancouver",
+      "grid_elevation_m": 40.0,
+      "years_covered": 30,
+      "annual_rain_mm": 2025.7,
+      "annual_snow_mm_swe": 193.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 15.01,
+          "wet_days_per_month": 16.93,
+          "snow_mm_swe_per_snow_day": 6.5,
+          "snow_days_per_month": 6.63,
+          "mean_daily_min_c": 1.39,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 10.71,
+          "wet_days_per_month": 13.97,
+          "snow_mm_swe_per_snow_day": 6.21,
+          "snow_days_per_month": 5.57,
+          "mean_daily_min_c": 1.55,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 11.79,
+          "wet_days_per_month": 18.0,
+          "snow_mm_swe_per_snow_day": 5.4,
+          "snow_days_per_month": 5.33,
+          "mean_daily_min_c": 2.87,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 9.78,
+          "wet_days_per_month": 16.5,
+          "snow_mm_swe_per_snow_day": 3.83,
+          "snow_days_per_month": 1.27,
+          "mean_daily_min_c": 5.19,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 9.06,
+          "wet_days_per_month": 12.3,
+          "snow_mm_swe_per_snow_day": 2.0,
+          "snow_days_per_month": 0.13,
+          "mean_daily_min_c": 8.75,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.95,
+          "wet_days_per_month": 11.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.69,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.32,
+          "wet_days_per_month": 6.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.49,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 9.67,
+          "wet_days_per_month": 7.37,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.88,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 11.28,
+          "wet_days_per_month": 10.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.49,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 14.71,
+          "wet_days_per_month": 16.07,
+          "snow_mm_swe_per_snow_day": 5.07,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 8.2,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 16.61,
+          "wet_days_per_month": 19.17,
+          "snow_mm_swe_per_snow_day": 5.51,
+          "snow_days_per_month": 3.27,
+          "mean_daily_min_c": 4.08,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 13.73,
+          "wet_days_per_month": 17.37,
+          "snow_mm_swe_per_snow_day": 7.33,
+          "snow_days_per_month": 7.9,
+          "mean_daily_min_c": 1.52,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 1.5
+        },
+        "spring": {
+          "cold_baseline_c": 5.6
+        },
+        "summer": {
+          "cold_baseline_c": 13.7
+        },
+        "autumn": {
+          "cold_baseline_c": 8.3
+        }
+      },
+      "severe": {
+        "rain_mm": 32.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 11.63,
+        "snow_mm_swe": 13.5,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.03,
+        "cold_c": -1.3,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.53
+      },
+      "warnings": []
+    },
+    {
+      "city": "Saskatoon SK",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 52.1332,
+      "longitude": -106.67,
+      "timezone": "America/Regina",
+      "grid_elevation_m": 486.0,
+      "years_covered": 30,
+      "annual_rain_mm": 338.6,
+      "annual_snow_mm_swe": 102.0,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 1.42,
+          "wet_days_per_month": 0.4,
+          "snow_mm_swe_per_snow_day": 2.62,
+          "snow_days_per_month": 5.5,
+          "mean_daily_min_c": -19.21,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 1.73,
+          "wet_days_per_month": 0.1,
+          "snow_mm_swe_per_snow_day": 2.64,
+          "snow_days_per_month": 3.7,
+          "mean_daily_min_c": -16.89,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 2.09,
+          "wet_days_per_month": 1.47,
+          "snow_mm_swe_per_snow_day": 3.01,
+          "snow_days_per_month": 4.57,
+          "mean_daily_min_c": -10.19,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 3.94,
+          "wet_days_per_month": 4.9,
+          "snow_mm_swe_per_snow_day": 3.75,
+          "snow_days_per_month": 2.7,
+          "mean_daily_min_c": -1.88,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.39,
+          "wet_days_per_month": 7.6,
+          "snow_mm_swe_per_snow_day": 3.45,
+          "snow_days_per_month": 0.7,
+          "mean_daily_min_c": 4.92,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.16,
+          "wet_days_per_month": 11.93,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.93,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.41,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.83,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.11,
+          "wet_days_per_month": 7.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.05,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 6.18,
+          "wet_days_per_month": 5.77,
+          "snow_mm_swe_per_snow_day": 4.38,
+          "snow_days_per_month": 0.2,
+          "mean_daily_min_c": 7.99,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 3.98,
+          "wet_days_per_month": 4.33,
+          "snow_mm_swe_per_snow_day": 4.23,
+          "snow_days_per_month": 1.93,
+          "mean_daily_min_c": 0.52,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 2.76,
+          "wet_days_per_month": 0.83,
+          "snow_mm_swe_per_snow_day": 3.55,
+          "snow_days_per_month": 4.73,
+          "mean_daily_min_c": -8.07,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 1.42,
+          "wet_days_per_month": 0.17,
+          "snow_mm_swe_per_snow_day": 2.56,
+          "snow_days_per_month": 4.53,
+          "mean_daily_min_c": -15.76,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -17.3
+        },
+        "spring": {
+          "cold_baseline_c": -2.4
+        },
+        "summer": {
+          "cold_baseline_c": 12.6
+        },
+        "autumn": {
+          "cold_baseline_c": 0.1
+        }
+      },
+      "severe": {
+        "rain_mm": 16.0,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 3.93,
+        "snow_mm_swe": 6.0,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.03,
+        "cold_c": -26.7,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.33
+      },
+      "warnings": []
+    },
+    {
+      "city": "Halifax NS",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 44.6488,
+      "longitude": -63.5752,
+      "timezone": "America/Halifax",
+      "grid_elevation_m": 26.0,
+      "years_covered": 30,
+      "annual_rain_mm": 1083.2,
+      "annual_snow_mm_swe": 217.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 10.0,
+          "wet_days_per_month": 6.33,
+          "snow_mm_swe_per_snow_day": 6.28,
+          "snow_days_per_month": 7.93,
+          "mean_daily_min_c": -7.0,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 10.27,
+          "wet_days_per_month": 5.53,
+          "snow_mm_swe_per_snow_day": 6.05,
+          "snow_days_per_month": 7.47,
+          "mean_daily_min_c": -6.83,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 8.55,
+          "wet_days_per_month": 7.83,
+          "snow_mm_swe_per_snow_day": 6.28,
+          "snow_days_per_month": 6.6,
+          "mean_daily_min_c": -3.46,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.34,
+          "wet_days_per_month": 10.43,
+          "snow_mm_swe_per_snow_day": 4.57,
+          "snow_days_per_month": 3.8,
+          "mean_daily_min_c": 1.34,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.22,
+          "wet_days_per_month": 11.33,
+          "snow_mm_swe_per_snow_day": 5.21,
+          "snow_days_per_month": 0.3,
+          "mean_daily_min_c": 6.08,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.29,
+          "wet_days_per_month": 11.8,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.25,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.55,
+          "wet_days_per_month": 10.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.84,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.81,
+          "wet_days_per_month": 10.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.61,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 10.22,
+          "wet_days_per_month": 9.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.79,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 12.28,
+          "wet_days_per_month": 10.33,
+          "snow_mm_swe_per_snow_day": 3.55,
+          "snow_days_per_month": 0.07,
+          "mean_daily_min_c": 8.65,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 11.07,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 7.44,
+          "snow_days_per_month": 1.77,
+          "mean_daily_min_c": 3.25,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 9.98,
+          "wet_days_per_month": 9.87,
+          "snow_mm_swe_per_snow_day": 6.18,
+          "snow_days_per_month": 6.33,
+          "mean_daily_min_c": -2.33,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -5.3
+        },
+        "spring": {
+          "cold_baseline_c": 1.3
+        },
+        "summer": {
+          "cold_baseline_c": 14.6
+        },
+        "autumn": {
+          "cold_baseline_c": 8.6
+        }
+      },
+      "severe": {
+        "rain_mm": 25.3,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.07,
+        "snow_mm_swe": 14.1,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.43,
+        "cold_c": -10.7,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.7
+      },
+      "warnings": []
+    },
+    {
+      "city": "Winnipeg MB",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 49.8951,
+      "longitude": -97.1384,
+      "timezone": "America/Winnipeg",
+      "grid_elevation_m": 232.0,
+      "years_covered": 30,
+      "annual_rain_mm": 492.8,
+      "annual_snow_mm_swe": 119.3,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 1.89,
+          "wet_days_per_month": 0.27,
+          "snow_mm_swe_per_snow_day": 2.83,
+          "snow_days_per_month": 5.47,
+          "mean_daily_min_c": -20.74,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 3.49,
+          "wet_days_per_month": 0.5,
+          "snow_mm_swe_per_snow_day": 2.72,
+          "snow_days_per_month": 4.07,
+          "mean_daily_min_c": -18.33,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 3.64,
+          "wet_days_per_month": 2.63,
+          "snow_mm_swe_per_snow_day": 3.14,
+          "snow_days_per_month": 4.73,
+          "mean_daily_min_c": -10.44,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.75,
+          "wet_days_per_month": 4.57,
+          "snow_mm_swe_per_snow_day": 4.33,
+          "snow_days_per_month": 2.67,
+          "mean_daily_min_c": -1.87,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.11,
+          "wet_days_per_month": 10.5,
+          "snow_mm_swe_per_snow_day": 5.45,
+          "snow_days_per_month": 0.63,
+          "mean_daily_min_c": 5.74,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.69,
+          "wet_days_per_month": 12.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.66,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.36,
+          "wet_days_per_month": 11.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.36,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.63,
+          "wet_days_per_month": 9.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.59,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.14,
+          "wet_days_per_month": 9.03,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.62,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.2,
+          "wet_days_per_month": 7.07,
+          "snow_mm_swe_per_snow_day": 4.36,
+          "snow_days_per_month": 1.93,
+          "mean_daily_min_c": 2.16,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.13,
+          "wet_days_per_month": 2.1,
+          "snow_mm_swe_per_snow_day": 3.81,
+          "snow_days_per_month": 5.0,
+          "mean_daily_min_c": -7.19,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 2.46,
+          "wet_days_per_month": 0.3,
+          "snow_mm_swe_per_snow_day": 3.42,
+          "snow_days_per_month": 6.17,
+          "mean_daily_min_c": -16.13,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -18.4
+        },
+        "spring": {
+          "cold_baseline_c": -2.2
+        },
+        "summer": {
+          "cold_baseline_c": 14.2
+        },
+        "autumn": {
+          "cold_baseline_c": 1.5
+        }
+      },
+      "severe": {
+        "rain_mm": 18.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 5.0,
+        "snow_mm_swe": 7.0,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.13,
+        "cold_c": -27.4,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.27
+      },
+      "warnings": []
+    },
+    {
+      "city": "Quebec City QC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 46.8139,
+      "longitude": -71.208,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 51.0,
+      "years_covered": 30,
+      "annual_rain_mm": 951.5,
+      "annual_snow_mm_swe": 294.4,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.94,
+          "wet_days_per_month": 3.0,
+          "snow_mm_swe_per_snow_day": 4.84,
+          "snow_days_per_month": 11.73,
+          "mean_daily_min_c": -15.77,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.65,
+          "wet_days_per_month": 2.03,
+          "snow_mm_swe_per_snow_day": 5.61,
+          "snow_days_per_month": 9.87,
+          "mean_daily_min_c": -13.92,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.61,
+          "wet_days_per_month": 4.83,
+          "snow_mm_swe_per_snow_day": 5.7,
+          "snow_days_per_month": 8.33,
+          "mean_daily_min_c": -8.11,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 8.19,
+          "wet_days_per_month": 9.47,
+          "snow_mm_swe_per_snow_day": 4.93,
+          "snow_days_per_month": 4.73,
+          "mean_daily_min_c": -1.49,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.88,
+          "wet_days_per_month": 12.53,
+          "snow_mm_swe_per_snow_day": 4.2,
+          "snow_days_per_month": 0.3,
+          "mean_daily_min_c": 6.73,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 9.3,
+          "wet_days_per_month": 12.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.61,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.66,
+          "wet_days_per_month": 14.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.64,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.57,
+          "wet_days_per_month": 13.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.79,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.63,
+          "wet_days_per_month": 11.43,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.47,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.94,
+          "wet_days_per_month": 12.0,
+          "snow_mm_swe_per_snow_day": 4.68,
+          "snow_days_per_month": 1.17,
+          "mean_daily_min_c": 4.13,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.61,
+          "wet_days_per_month": 8.87,
+          "snow_mm_swe_per_snow_day": 4.62,
+          "snow_days_per_month": 6.03,
+          "mean_daily_min_c": -2.71,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 8.25,
+          "wet_days_per_month": 4.5,
+          "snow_mm_swe_per_snow_day": 5.48,
+          "snow_days_per_month": 11.57,
+          "mean_daily_min_c": -11.06,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -13.6
+        },
+        "spring": {
+          "cold_baseline_c": -0.9
+        },
+        "summer": {
+          "cold_baseline_c": 14.4
+        },
+        "autumn": {
+          "cold_baseline_c": 4.0
+        }
+      },
+      "severe": {
+        "rain_mm": 23.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.63,
+        "snow_mm_swe": 12.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 5.4,
+        "cold_c": -20.4,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Fredericton NB",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 45.9636,
+      "longitude": -66.6431,
+      "timezone": "America/Moncton",
+      "grid_elevation_m": 9.0,
+      "years_covered": 30,
+      "annual_rain_mm": 911.8,
+      "annual_snow_mm_swe": 275.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 9.78,
+          "wet_days_per_month": 4.13,
+          "snow_mm_swe_per_snow_day": 5.84,
+          "snow_days_per_month": 8.8,
+          "mean_daily_min_c": -13.36,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.7,
+          "wet_days_per_month": 3.3,
+          "snow_mm_swe_per_snow_day": 7.07,
+          "snow_days_per_month": 8.27,
+          "mean_daily_min_c": -12.02,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 8.01,
+          "wet_days_per_month": 5.8,
+          "snow_mm_swe_per_snow_day": 6.49,
+          "snow_days_per_month": 7.97,
+          "mean_daily_min_c": -6.84,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.58,
+          "wet_days_per_month": 9.97,
+          "snow_mm_swe_per_snow_day": 5.35,
+          "snow_days_per_month": 4.23,
+          "mean_daily_min_c": -0.12,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.84,
+          "wet_days_per_month": 12.33,
+          "snow_mm_swe_per_snow_day": 6.57,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 6.52,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.21,
+          "wet_days_per_month": 12.07,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.1,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.09,
+          "wet_days_per_month": 11.77,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.76,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.28,
+          "wet_days_per_month": 10.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.33,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.83,
+          "wet_days_per_month": 9.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.27,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.69,
+          "wet_days_per_month": 11.2,
+          "snow_mm_swe_per_snow_day": 4.63,
+          "snow_days_per_month": 0.7,
+          "mean_daily_min_c": 5.19,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 8.9,
+          "wet_days_per_month": 8.9,
+          "snow_mm_swe_per_snow_day": 5.72,
+          "snow_days_per_month": 3.77,
+          "mean_daily_min_c": -0.86,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 9.54,
+          "wet_days_per_month": 6.4,
+          "snow_mm_swe_per_snow_day": 6.64,
+          "snow_days_per_month": 7.97,
+          "mean_daily_min_c": -8.1,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -11.1
+        },
+        "spring": {
+          "cold_baseline_c": -0.1
+        },
+        "summer": {
+          "cold_baseline_c": 14.4
+        },
+        "autumn": {
+          "cold_baseline_c": 5.2
+        }
+      },
+      "severe": {
+        "rain_mm": 22.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.57,
+        "snow_mm_swe": 15.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.33,
+        "cold_c": -17.8,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.37
+      },
+      "warnings": []
+    },
+    {
+      "city": "Montreal QC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 45.5019,
+      "longitude": -73.5674,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 76.0,
+      "years_covered": 30,
+      "annual_rain_mm": 900.6,
+      "annual_snow_mm_swe": 207.2,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 9.54,
+          "wet_days_per_month": 3.37,
+          "snow_mm_swe_per_snow_day": 4.4,
+          "snow_days_per_month": 9.23,
+          "mean_daily_min_c": -14.18,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.15,
+          "wet_days_per_month": 3.17,
+          "snow_mm_swe_per_snow_day": 5.0,
+          "snow_days_per_month": 8.07,
+          "mean_daily_min_c": -12.86,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.18,
+          "wet_days_per_month": 5.83,
+          "snow_mm_swe_per_snow_day": 5.39,
+          "snow_days_per_month": 6.7,
+          "mean_daily_min_c": -6.9,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.91,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 6.01,
+          "snow_days_per_month": 2.5,
+          "mean_daily_min_c": 0.58,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 8.14,
+          "wet_days_per_month": 11.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.13,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.46,
+          "wet_days_per_month": 12.33,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.19,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.83,
+          "wet_days_per_month": 12.57,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.18,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.57,
+          "wet_days_per_month": 11.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.41,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.57,
+          "wet_days_per_month": 10.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.3,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.51,
+          "wet_days_per_month": 11.27,
+          "snow_mm_swe_per_snow_day": 4.31,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 5.86,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.12,
+          "wet_days_per_month": 9.6,
+          "snow_mm_swe_per_snow_day": 4.66,
+          "snow_days_per_month": 3.5,
+          "mean_daily_min_c": -0.77,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 7.22,
+          "wet_days_per_month": 5.5,
+          "snow_mm_swe_per_snow_day": 4.85,
+          "snow_days_per_month": 9.13,
+          "mean_daily_min_c": -8.56,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -11.8
+        },
+        "spring": {
+          "cold_baseline_c": 0.6
+        },
+        "summer": {
+          "cold_baseline_c": 15.9
+        },
+        "autumn": {
+          "cold_baseline_c": 5.8
+        }
+      },
+      "severe": {
+        "rain_mm": 21.6,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.63,
+        "snow_mm_swe": 11.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.0,
+        "cold_c": -19.2,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "St. John's NL",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 47.5615,
+      "longitude": -52.7126,
+      "timezone": "America/St_Johns",
+      "grid_elevation_m": 34.0,
+      "years_covered": 30,
+      "annual_rain_mm": 871.7,
+      "annual_snow_mm_swe": 318.4,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 7.12,
+          "wet_days_per_month": 6.93,
+          "snow_mm_swe_per_snow_day": 6.44,
+          "snow_days_per_month": 11.87,
+          "mean_daily_min_c": -5.73,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.15,
+          "wet_days_per_month": 6.2,
+          "snow_mm_swe_per_snow_day": 6.45,
+          "snow_days_per_month": 10.13,
+          "mean_daily_min_c": -6.27,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.7,
+          "wet_days_per_month": 7.73,
+          "snow_mm_swe_per_snow_day": 6.08,
+          "snow_days_per_month": 9.0,
+          "mean_daily_min_c": -4.2,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.15,
+          "wet_days_per_month": 9.43,
+          "snow_mm_swe_per_snow_day": 5.39,
+          "snow_days_per_month": 5.3,
+          "mean_daily_min_c": -0.55,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.14,
+          "wet_days_per_month": 10.8,
+          "snow_mm_swe_per_snow_day": 4.17,
+          "snow_days_per_month": 1.27,
+          "mean_daily_min_c": 2.73,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 6.16,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 7.1,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.19,
+          "wet_days_per_month": 10.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.31,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.73,
+          "wet_days_per_month": 10.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.79,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.65,
+          "wet_days_per_month": 10.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.76,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 8.12,
+          "wet_days_per_month": 12.7,
+          "snow_mm_swe_per_snow_day": 5.09,
+          "snow_days_per_month": 0.3,
+          "mean_daily_min_c": 6.6,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.85,
+          "wet_days_per_month": 12.1,
+          "snow_mm_swe_per_snow_day": 5.86,
+          "snow_days_per_month": 2.77,
+          "mean_daily_min_c": 2.26,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 7.24,
+          "wet_days_per_month": 10.03,
+          "snow_mm_swe_per_snow_day": 6.19,
+          "snow_days_per_month": 8.9,
+          "mean_daily_min_c": -1.99,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -4.6
+        },
+        "spring": {
+          "cold_baseline_c": -0.7
+        },
+        "summer": {
+          "cold_baseline_c": 11.1
+        },
+        "autumn": {
+          "cold_baseline_c": 6.5
+        }
+      },
+      "severe": {
+        "rain_mm": 18.6,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.3,
+        "snow_mm_swe": 14.1,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.97,
+        "cold_c": -9.1,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.87
+      },
+      "warnings": []
+    },
+    {
+      "city": "London ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 42.9849,
+      "longitude": -81.2453,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 251.0,
+      "years_covered": 30,
+      "annual_rain_mm": 863.0,
+      "annual_snow_mm_swe": 149.0,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 7.15,
+          "wet_days_per_month": 5.43,
+          "snow_mm_swe_per_snow_day": 3.56,
+          "snow_days_per_month": 9.63,
+          "mean_daily_min_c": -8.91,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.67,
+          "wet_days_per_month": 4.3,
+          "snow_mm_swe_per_snow_day": 3.64,
+          "snow_days_per_month": 8.27,
+          "mean_daily_min_c": -9.35,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.53,
+          "wet_days_per_month": 7.17,
+          "snow_mm_swe_per_snow_day": 3.8,
+          "snow_days_per_month": 5.57,
+          "mean_daily_min_c": -4.36,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.54,
+          "wet_days_per_month": 11.1,
+          "snow_mm_swe_per_snow_day": 3.38,
+          "snow_days_per_month": 2.3,
+          "mean_daily_min_c": 2.19,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.7,
+          "wet_days_per_month": 12.4,
+          "snow_mm_swe_per_snow_day": 2.5,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 9.05,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.45,
+          "wet_days_per_month": 11.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.71,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.55,
+          "wet_days_per_month": 11.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.21,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.44,
+          "wet_days_per_month": 11.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.56,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.5,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.09,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.1,
+          "wet_days_per_month": 11.7,
+          "snow_mm_swe_per_snow_day": 2.0,
+          "snow_days_per_month": 0.3,
+          "mean_daily_min_c": 7.06,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.25,
+          "wet_days_per_month": 8.9,
+          "snow_mm_swe_per_snow_day": 3.04,
+          "snow_days_per_month": 3.77,
+          "mean_daily_min_c": 1.04,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.95,
+          "wet_days_per_month": 6.47,
+          "snow_mm_swe_per_snow_day": 3.64,
+          "snow_days_per_month": 8.27,
+          "mean_daily_min_c": -4.45,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -7.5
+        },
+        "spring": {
+          "cold_baseline_c": 2.3
+        },
+        "summer": {
+          "cold_baseline_c": 16.2
+        },
+        "autumn": {
+          "cold_baseline_c": 7.1
+        }
+      },
+      "severe": {
+        "rain_mm": 19.7,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.87,
+        "snow_mm_swe": 7.7,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 3.87,
+        "cold_c": -14.1,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.27
+      },
+      "warnings": []
+    },
+    {
+      "city": "Kitchener-Waterloo ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 43.4516,
+      "longitude": -80.4925,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 337.0,
+      "years_covered": 30,
+      "annual_rain_mm": 765.2,
+      "annual_snow_mm_swe": 169.4,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 7.48,
+          "wet_days_per_month": 4.5,
+          "snow_mm_swe_per_snow_day": 3.39,
+          "snow_days_per_month": 10.67,
+          "mean_daily_min_c": -10.38,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.15,
+          "wet_days_per_month": 3.57,
+          "snow_mm_swe_per_snow_day": 4.11,
+          "snow_days_per_month": 8.03,
+          "mean_daily_min_c": -10.82,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.38,
+          "wet_days_per_month": 5.77,
+          "snow_mm_swe_per_snow_day": 4.05,
+          "snow_days_per_month": 6.07,
+          "mean_daily_min_c": -5.76,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.0,
+          "wet_days_per_month": 10.37,
+          "snow_mm_swe_per_snow_day": 4.08,
+          "snow_days_per_month": 2.57,
+          "mean_daily_min_c": 0.81,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.51,
+          "wet_days_per_month": 11.53,
+          "snow_mm_swe_per_snow_day": 3.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 7.79,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.05,
+          "wet_days_per_month": 11.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.47,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.42,
+          "wet_days_per_month": 11.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.04,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.16,
+          "wet_days_per_month": 10.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.48,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.21,
+          "wet_days_per_month": 9.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.84,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 6.95,
+          "wet_days_per_month": 11.2,
+          "snow_mm_swe_per_snow_day": 3.22,
+          "snow_days_per_month": 0.33,
+          "mean_daily_min_c": 5.71,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.07,
+          "wet_days_per_month": 8.27,
+          "snow_mm_swe_per_snow_day": 3.41,
+          "snow_days_per_month": 4.37,
+          "mean_daily_min_c": -0.37,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.72,
+          "wet_days_per_month": 5.5,
+          "snow_mm_swe_per_snow_day": 3.69,
+          "snow_days_per_month": 9.23,
+          "mean_daily_min_c": -5.83,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -9.0
+        },
+        "spring": {
+          "cold_baseline_c": 0.9
+        },
+        "summer": {
+          "cold_baseline_c": 15.0
+        },
+        "autumn": {
+          "cold_baseline_c": 5.7
+        }
+      },
+      "severe": {
+        "rain_mm": 19.4,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.33,
+        "snow_mm_swe": 7.9,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.23,
+        "cold_c": -15.9,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Sudbury ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 46.4917,
+      "longitude": -80.993,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 268.0,
+      "years_covered": 30,
+      "annual_rain_mm": 669.0,
+      "annual_snow_mm_swe": 212.6,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 6.51,
+          "wet_days_per_month": 1.7,
+          "snow_mm_swe_per_snow_day": 3.99,
+          "snow_days_per_month": 10.73,
+          "mean_daily_min_c": -16.61,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.2,
+          "wet_days_per_month": 1.43,
+          "snow_mm_swe_per_snow_day": 4.35,
+          "snow_days_per_month": 7.97,
+          "mean_daily_min_c": -15.15,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.99,
+          "wet_days_per_month": 3.27,
+          "snow_mm_swe_per_snow_day": 4.78,
+          "snow_days_per_month": 6.2,
+          "mean_daily_min_c": -9.36,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.94,
+          "wet_days_per_month": 7.2,
+          "snow_mm_swe_per_snow_day": 4.45,
+          "snow_days_per_month": 4.0,
+          "mean_daily_min_c": -2.01,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.64,
+          "wet_days_per_month": 10.37,
+          "snow_mm_swe_per_snow_day": 5.0,
+          "snow_days_per_month": 0.43,
+          "mean_daily_min_c": 5.82,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.4,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.03,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.7,
+          "wet_days_per_month": 10.77,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.96,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.02,
+          "wet_days_per_month": 11.23,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.35,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.24,
+          "wet_days_per_month": 11.07,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.46,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.39,
+          "wet_days_per_month": 11.9,
+          "snow_mm_swe_per_snow_day": 4.67,
+          "snow_days_per_month": 0.9,
+          "mean_daily_min_c": 3.89,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.04,
+          "wet_days_per_month": 6.67,
+          "snow_mm_swe_per_snow_day": 3.98,
+          "snow_days_per_month": 6.23,
+          "mean_daily_min_c": -3.37,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.56,
+          "wet_days_per_month": 3.03,
+          "snow_mm_swe_per_snow_day": 4.29,
+          "snow_days_per_month": 9.83,
+          "mean_daily_min_c": -11.35,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -14.3
+        },
+        "spring": {
+          "cold_baseline_c": -1.9
+        },
+        "summer": {
+          "cold_baseline_c": 13.8
+        },
+        "autumn": {
+          "cold_baseline_c": 3.7
+        }
+      },
+      "severe": {
+        "rain_mm": 19.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 6.33,
+        "snow_mm_swe": 9.4,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.67,
+        "cold_c": -22.1,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.4
+      },
+      "warnings": []
+    },
+    {
+      "city": "Barrie ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 44.3894,
+      "longitude": -79.6903,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 230.0,
+      "years_covered": 30,
+      "annual_rain_mm": 714.7,
+      "annual_snow_mm_swe": 187.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 6.76,
+          "wet_days_per_month": 3.87,
+          "snow_mm_swe_per_snow_day": 3.3,
+          "snow_days_per_month": 11.77,
+          "mean_daily_min_c": -11.06,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.34,
+          "wet_days_per_month": 3.1,
+          "snow_mm_swe_per_snow_day": 3.69,
+          "snow_days_per_month": 9.0,
+          "mean_daily_min_c": -11.14,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.82,
+          "wet_days_per_month": 5.47,
+          "snow_mm_swe_per_snow_day": 3.62,
+          "snow_days_per_month": 6.83,
+          "mean_daily_min_c": -6.15,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.79,
+          "wet_days_per_month": 9.2,
+          "snow_mm_swe_per_snow_day": 4.16,
+          "snow_days_per_month": 3.37,
+          "mean_daily_min_c": 0.66,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.71,
+          "wet_days_per_month": 10.53,
+          "snow_mm_swe_per_snow_day": 1.37,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 7.72,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.63,
+          "wet_days_per_month": 11.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.63,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.9,
+          "wet_days_per_month": 11.43,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.58,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.22,
+          "wet_days_per_month": 11.23,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.09,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 6.91,
+          "wet_days_per_month": 11.2,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.45,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.99,
+          "wet_days_per_month": 12.87,
+          "snow_mm_swe_per_snow_day": 4.68,
+          "snow_days_per_month": 0.43,
+          "mean_daily_min_c": 6.26,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 5.77,
+          "wet_days_per_month": 9.2,
+          "snow_mm_swe_per_snow_day": 3.92,
+          "snow_days_per_month": 5.0,
+          "mean_daily_min_c": -0.09,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 4.77,
+          "wet_days_per_month": 5.03,
+          "snow_mm_swe_per_snow_day": 3.64,
+          "snow_days_per_month": 10.97,
+          "mean_daily_min_c": -6.15,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -9.4
+        },
+        "spring": {
+          "cold_baseline_c": 0.7
+        },
+        "summer": {
+          "cold_baseline_c": 15.5
+        },
+        "autumn": {
+          "cold_baseline_c": 6.2
+        }
+      },
+      "severe": {
+        "rain_mm": 17.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.4,
+        "snow_mm_swe": 7.9,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.77,
+        "cold_c": -16.3,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.53
+      },
+      "warnings": []
+    },
+    {
+      "city": "Thunder Bay ON",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 48.3809,
+      "longitude": -89.2477,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 188.0,
+      "years_covered": 30,
+      "annual_rain_mm": 498.2,
+      "annual_snow_mm_swe": 177.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 3.23,
+          "wet_days_per_month": 0.27,
+          "snow_mm_swe_per_snow_day": 3.71,
+          "snow_days_per_month": 7.7,
+          "mean_daily_min_c": -16.15,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 3.67,
+          "wet_days_per_month": 0.3,
+          "snow_mm_swe_per_snow_day": 3.77,
+          "snow_days_per_month": 5.53,
+          "mean_daily_min_c": -14.62,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 4.45,
+          "wet_days_per_month": 2.23,
+          "snow_mm_swe_per_snow_day": 3.75,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -8.42,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 5.27,
+          "wet_days_per_month": 5.03,
+          "snow_mm_swe_per_snow_day": 5.45,
+          "snow_days_per_month": 4.9,
+          "mean_daily_min_c": -2.25,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.49,
+          "wet_days_per_month": 9.67,
+          "snow_mm_swe_per_snow_day": 3.66,
+          "snow_days_per_month": 0.7,
+          "mean_daily_min_c": 3.91,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 6.22,
+          "wet_days_per_month": 10.37,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.64,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.9,
+          "wet_days_per_month": 10.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.54,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.16,
+          "wet_days_per_month": 9.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.05,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.95,
+          "wet_days_per_month": 10.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.11,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 6.72,
+          "wet_days_per_month": 9.83,
+          "snow_mm_swe_per_snow_day": 3.79,
+          "snow_days_per_month": 1.27,
+          "mean_daily_min_c": 5.18,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 5.93,
+          "wet_days_per_month": 3.83,
+          "snow_mm_swe_per_snow_day": 4.54,
+          "snow_days_per_month": 5.53,
+          "mean_daily_min_c": -2.28,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 2.88,
+          "wet_days_per_month": 1.27,
+          "snow_mm_swe_per_snow_day": 4.25,
+          "snow_days_per_month": 8.03,
+          "mean_daily_min_c": -10.71,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -13.8
+        },
+        "spring": {
+          "cold_baseline_c": -2.3
+        },
+        "summer": {
+          "cold_baseline_c": 14.1
+        },
+        "autumn": {
+          "cold_baseline_c": 5.0
+        }
+      },
+      "severe": {
+        "rain_mm": 18.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 5.17,
+        "snow_mm_swe": 9.1,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.0,
+        "cold_c": -20.9,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.37
+      },
+      "warnings": []
+    },
+    {
+      "city": "Moncton NB",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 46.0878,
+      "longitude": -64.7782,
+      "timezone": "America/Moncton",
+      "grid_elevation_m": 16.0,
+      "years_covered": 30,
+      "annual_rain_mm": 814.0,
+      "annual_snow_mm_swe": 307.3,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.62,
+          "wet_days_per_month": 4.0,
+          "snow_mm_swe_per_snow_day": 6.16,
+          "snow_days_per_month": 9.6,
+          "mean_daily_min_c": -12.61,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.36,
+          "wet_days_per_month": 3.47,
+          "snow_mm_swe_per_snow_day": 6.73,
+          "snow_days_per_month": 9.07,
+          "mean_daily_min_c": -11.63,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 7.67,
+          "wet_days_per_month": 5.23,
+          "snow_mm_swe_per_snow_day": 6.72,
+          "snow_days_per_month": 8.57,
+          "mean_daily_min_c": -6.84,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 5.49,
+          "wet_days_per_month": 9.47,
+          "snow_mm_swe_per_snow_day": 6.08,
+          "snow_days_per_month": 5.2,
+          "mean_daily_min_c": -0.4,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.38,
+          "wet_days_per_month": 12.53,
+          "snow_mm_swe_per_snow_day": 9.6,
+          "snow_days_per_month": 0.43,
+          "mean_daily_min_c": 5.84,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.52,
+          "wet_days_per_month": 11.97,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.54,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.1,
+          "wet_days_per_month": 11.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.65,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.78,
+          "wet_days_per_month": 9.9,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.41,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 10.08,
+          "wet_days_per_month": 9.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.5,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.0,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 4.49,
+          "snow_days_per_month": 0.47,
+          "mean_daily_min_c": 5.59,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 8.56,
+          "wet_days_per_month": 8.8,
+          "snow_mm_swe_per_snow_day": 6.07,
+          "snow_days_per_month": 3.57,
+          "mean_daily_min_c": -0.37,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 8.26,
+          "wet_days_per_month": 6.5,
+          "snow_mm_swe_per_snow_day": 7.0,
+          "snow_days_per_month": 8.5,
+          "mean_daily_min_c": -7.31,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -10.5
+        },
+        "spring": {
+          "cold_baseline_c": -0.5
+        },
+        "summer": {
+          "cold_baseline_c": 14.2
+        },
+        "autumn": {
+          "cold_baseline_c": 5.6
+        }
+      },
+      "severe": {
+        "rain_mm": 20.4,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.27,
+        "snow_mm_swe": 15.8,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.63,
+        "cold_c": -17.1,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.57
+      },
+      "warnings": []
+    },
+    {
+      "city": "Saguenay QC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 48.428,
+      "longitude": -71.0685,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 10.0,
+      "years_covered": 30,
+      "annual_rain_mm": 842.8,
+      "annual_snow_mm_swe": 311.7,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 7.48,
+          "wet_days_per_month": 1.67,
+          "snow_mm_swe_per_snow_day": 4.13,
+          "snow_days_per_month": 13.17,
+          "mean_daily_min_c": -18.69,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.76,
+          "wet_days_per_month": 1.17,
+          "snow_mm_swe_per_snow_day": 4.27,
+          "snow_days_per_month": 10.67,
+          "mean_daily_min_c": -16.6,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.77,
+          "wet_days_per_month": 3.2,
+          "snow_mm_swe_per_snow_day": 4.63,
+          "snow_days_per_month": 10.67,
+          "mean_daily_min_c": -10.33,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.1,
+          "wet_days_per_month": 8.77,
+          "snow_mm_swe_per_snow_day": 4.12,
+          "snow_days_per_month": 6.87,
+          "mean_daily_min_c": -2.94,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.84,
+          "wet_days_per_month": 12.53,
+          "snow_mm_swe_per_snow_day": 4.85,
+          "snow_days_per_month": 0.93,
+          "mean_daily_min_c": 4.54,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.8,
+          "wet_days_per_month": 12.67,
+          "snow_mm_swe_per_snow_day": 1.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 10.87,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.55,
+          "wet_days_per_month": 15.27,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.07,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.34,
+          "wet_days_per_month": 14.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.5,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.18,
+          "wet_days_per_month": 13.57,
+          "snow_mm_swe_per_snow_day": 1.3,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 9.12,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.72,
+          "wet_days_per_month": 13.57,
+          "snow_mm_swe_per_snow_day": 3.74,
+          "snow_days_per_month": 2.83,
+          "mean_daily_min_c": 2.82,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 6.78,
+          "wet_days_per_month": 7.43,
+          "snow_mm_swe_per_snow_day": 4.14,
+          "snow_days_per_month": 9.67,
+          "mean_daily_min_c": -4.12,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 6.7,
+          "wet_days_per_month": 2.97,
+          "snow_mm_swe_per_snow_day": 4.29,
+          "snow_days_per_month": 14.27,
+          "mean_daily_min_c": -13.34,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -16.2
+        },
+        "spring": {
+          "cold_baseline_c": -2.9
+        },
+        "summer": {
+          "cold_baseline_c": 12.8
+        },
+        "autumn": {
+          "cold_baseline_c": 2.6
+        }
+      },
+      "severe": {
+        "rain_mm": 19.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.57,
+        "snow_mm_swe": 9.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 7.03,
+        "cold_c": -23.4,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.5
+      },
+      "warnings": []
+    },
+    {
+      "city": "Sherbrooke QC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 45.4042,
+      "longitude": -71.8929,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 149.0,
+      "years_covered": 30,
+      "annual_rain_mm": 974.2,
+      "annual_snow_mm_swe": 259.1,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.26,
+          "wet_days_per_month": 3.6,
+          "snow_mm_swe_per_snow_day": 3.88,
+          "snow_days_per_month": 12.1,
+          "mean_daily_min_c": -14.32,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.32,
+          "wet_days_per_month": 3.07,
+          "snow_mm_swe_per_snow_day": 4.46,
+          "snow_days_per_month": 10.77,
+          "mean_daily_min_c": -12.97,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.83,
+          "wet_days_per_month": 5.63,
+          "snow_mm_swe_per_snow_day": 5.14,
+          "snow_days_per_month": 8.67,
+          "mean_daily_min_c": -7.41,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.13,
+          "wet_days_per_month": 10.53,
+          "snow_mm_swe_per_snow_day": 4.75,
+          "snow_days_per_month": 4.13,
+          "mean_daily_min_c": 0.03,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.83,
+          "wet_days_per_month": 14.3,
+          "snow_mm_swe_per_snow_day": 4.21,
+          "snow_days_per_month": 0.37,
+          "mean_daily_min_c": 7.13,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 9.07,
+          "wet_days_per_month": 13.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.64,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.5,
+          "wet_days_per_month": 15.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.65,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.59,
+          "wet_days_per_month": 13.87,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.96,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 9.11,
+          "wet_days_per_month": 11.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.95,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 8.92,
+          "wet_days_per_month": 12.5,
+          "snow_mm_swe_per_snow_day": 4.05,
+          "snow_days_per_month": 1.3,
+          "mean_daily_min_c": 4.76,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 6.46,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": 4.09,
+          "snow_days_per_month": 6.23,
+          "mean_daily_min_c": -1.51,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 7.31,
+          "wet_days_per_month": 5.33,
+          "snow_mm_swe_per_snow_day": 4.62,
+          "snow_days_per_month": 11.33,
+          "mean_daily_min_c": -9.16,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -12.1
+        },
+        "spring": {
+          "cold_baseline_c": -0.1
+        },
+        "summer": {
+          "cold_baseline_c": 14.4
+        },
+        "autumn": {
+          "cold_baseline_c": 4.7
+        }
+      },
+      "severe": {
+        "rain_mm": 20.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.43,
+        "snow_mm_swe": 10.0,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 5.6,
+        "cold_c": -19.8,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.6
+      },
+      "warnings": []
+    },
+    {
+      "city": "Trois-Rivieres QC",
+      "account": "Canada",
+      "country": "CA",
+      "latitude": 46.3432,
+      "longitude": -72.543,
+      "timezone": "America/Toronto",
+      "grid_elevation_m": 20.0,
+      "years_covered": 30,
+      "annual_rain_mm": 898.0,
+      "annual_snow_mm_swe": 241.3,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 8.73,
+          "wet_days_per_month": 3.2,
+          "snow_mm_swe_per_snow_day": 4.69,
+          "snow_days_per_month": 10.4,
+          "mean_daily_min_c": -15.49,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 6.57,
+          "wet_days_per_month": 2.3,
+          "snow_mm_swe_per_snow_day": 5.13,
+          "snow_days_per_month": 9.0,
+          "mean_daily_min_c": -13.5,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 6.31,
+          "wet_days_per_month": 5.4,
+          "snow_mm_swe_per_snow_day": 5.61,
+          "snow_days_per_month": 7.07,
+          "mean_daily_min_c": -7.66,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 7.75,
+          "wet_days_per_month": 10.07,
+          "snow_mm_swe_per_snow_day": 5.59,
+          "snow_days_per_month": 3.1,
+          "mean_daily_min_c": -0.22,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.72,
+          "wet_days_per_month": 12.13,
+          "snow_mm_swe_per_snow_day": 3.26,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 7.97,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 8.48,
+          "wet_days_per_month": 12.47,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.85,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 8.17,
+          "wet_days_per_month": 13.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.76,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 8.9,
+          "wet_days_per_month": 12.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.97,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 8.84,
+          "wet_days_per_month": 11.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.69,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.35,
+          "wet_days_per_month": 11.27,
+          "snow_mm_swe_per_snow_day": 3.64,
+          "snow_days_per_month": 0.8,
+          "mean_daily_min_c": 5.17,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.58,
+          "wet_days_per_month": 8.6,
+          "snow_mm_swe_per_snow_day": 4.94,
+          "snow_days_per_month": 4.3,
+          "mean_daily_min_c": -1.78,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 7.78,
+          "wet_days_per_month": 4.83,
+          "snow_mm_swe_per_snow_day": 5.1,
+          "snow_days_per_month": 10.1,
+          "mean_daily_min_c": -10.27,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -13.1
+        },
+        "spring": {
+          "cold_baseline_c": 0.0
+        },
+        "summer": {
+          "cold_baseline_c": 15.5
+        },
+        "autumn": {
+          "cold_baseline_c": 5.0
+        }
+      },
+      "severe": {
+        "rain_mm": 21.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.57,
+        "snow_mm_swe": 11.8,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.5,
+        "cold_c": -20.3,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.57
+      },
+      "warnings": []
+    },
+    {
+      "city": "London UK",
+      "account": "Europe",
+      "country": "GB",
+      "latitude": 51.5074,
+      "longitude": -0.1278,
+      "timezone": "Europe/London",
+      "grid_elevation_m": 16.0,
+      "years_covered": 30,
+      "annual_rain_mm": 637.4,
+      "annual_snow_mm_swe": 12.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 4.64,
+          "wet_days_per_month": 10.87,
+          "snow_mm_swe_per_snow_day": 2.62,
+          "snow_days_per_month": 0.87,
+          "mean_daily_min_c": 2.18,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 4.56,
+          "wet_days_per_month": 9.03,
+          "snow_mm_swe_per_snow_day": 2.98,
+          "snow_days_per_month": 1.13,
+          "mean_daily_min_c": 2.02,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 3.87,
+          "wet_days_per_month": 10.03,
+          "snow_mm_swe_per_snow_day": 3.07,
+          "snow_days_per_month": 0.63,
+          "mean_daily_min_c": 3.33,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.24,
+          "wet_days_per_month": 10.93,
+          "snow_mm_swe_per_snow_day": 1.9,
+          "snow_days_per_month": 0.2,
+          "mean_daily_min_c": 5.13,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 4.96,
+          "wet_days_per_month": 10.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.31,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.17,
+          "wet_days_per_month": 10.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.33,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 4.93,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.51,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.73,
+          "wet_days_per_month": 10.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.45,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.06,
+          "wet_days_per_month": 9.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.19,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.11,
+          "wet_days_per_month": 11.3,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.41,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 5.51,
+          "wet_days_per_month": 11.07,
+          "snow_mm_swe_per_snow_day": 4.33,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 4.93,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.07,
+          "wet_days_per_month": 10.6,
+          "snow_mm_swe_per_snow_day": 2.76,
+          "snow_days_per_month": 0.87,
+          "mean_daily_min_c": 2.7,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 2.3
+        },
+        "spring": {
+          "cold_baseline_c": 5.6
+        },
+        "summer": {
+          "cold_baseline_c": 12.8
+        },
+        "autumn": {
+          "cold_baseline_c": 8.2
+        }
+      },
+      "severe": {
+        "rain_mm": 12.0,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.83,
+        "snow_mm_swe": 5.4,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 0.4,
+        "cold_c": -1.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.73
+      },
+      "warnings": []
+    },
+    {
+      "city": "Paris FR",
+      "account": "Europe",
+      "country": "FR",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "timezone": "Europe/Paris",
+      "grid_elevation_m": 36.0,
+      "years_covered": 30,
+      "annual_rain_mm": 655.3,
+      "annual_snow_mm_swe": 15.5,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 4.34,
+          "wet_days_per_month": 10.63,
+          "snow_mm_swe_per_snow_day": 3.81,
+          "snow_days_per_month": 0.87,
+          "mean_daily_min_c": 1.89,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 4.5,
+          "wet_days_per_month": 9.33,
+          "snow_mm_swe_per_snow_day": 3.2,
+          "snow_days_per_month": 1.1,
+          "mean_daily_min_c": 1.65,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 4.57,
+          "wet_days_per_month": 10.2,
+          "snow_mm_swe_per_snow_day": 2.96,
+          "snow_days_per_month": 0.6,
+          "mean_daily_min_c": 3.55,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.45,
+          "wet_days_per_month": 10.8,
+          "snow_mm_swe_per_snow_day": 1.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 5.88,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.51,
+          "wet_days_per_month": 11.37,
+          "snow_mm_swe_per_snow_day": 2.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 9.55,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.17,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.8,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 5.38,
+          "wet_days_per_month": 9.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.96,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.96,
+          "wet_days_per_month": 9.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.83,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.4,
+          "wet_days_per_month": 8.37,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.97,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.16,
+          "wet_days_per_month": 11.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.08,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.87,
+          "wet_days_per_month": 11.43,
+          "snow_mm_swe_per_snow_day": 2.5,
+          "snow_days_per_month": 0.27,
+          "mean_daily_min_c": 5.18,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.08,
+          "wet_days_per_month": 12.13,
+          "snow_mm_swe_per_snow_day": 4.14,
+          "snow_days_per_month": 0.93,
+          "mean_daily_min_c": 2.47,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 2.0
+        },
+        "spring": {
+          "cold_baseline_c": 6.3
+        },
+        "summer": {
+          "cold_baseline_c": 14.2
+        },
+        "autumn": {
+          "cold_baseline_c": 8.7
+        }
+      },
+      "severe": {
+        "rain_mm": 11.9,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.9,
+        "snow_mm_swe": 6.9,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 0.4,
+        "cold_c": -2.2,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 19.2
+      },
+      "warnings": []
+    },
+    {
+      "city": "Oslo NO",
+      "account": "Europe",
+      "country": "NO",
+      "latitude": 59.9139,
+      "longitude": 10.7522,
+      "timezone": "Europe/Oslo",
+      "grid_elevation_m": 21.0,
+      "years_covered": 30,
+      "annual_rain_mm": 724.4,
+      "annual_snow_mm_swe": 236.1,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 4.27,
+          "wet_days_per_month": 3.3,
+          "snow_mm_swe_per_snow_day": 5.52,
+          "snow_days_per_month": 10.33,
+          "mean_daily_min_c": -6.4,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 4.71,
+          "wet_days_per_month": 2.1,
+          "snow_mm_swe_per_snow_day": 4.89,
+          "snow_days_per_month": 8.3,
+          "mean_daily_min_c": -6.12,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 4.72,
+          "wet_days_per_month": 3.2,
+          "snow_mm_swe_per_snow_day": 5.61,
+          "snow_days_per_month": 6.5,
+          "mean_daily_min_c": -3.1,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.84,
+          "wet_days_per_month": 7.73,
+          "snow_mm_swe_per_snow_day": 4.62,
+          "snow_days_per_month": 3.23,
+          "mean_daily_min_c": 1.3,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.3,
+          "wet_days_per_month": 11.5,
+          "snow_mm_swe_per_snow_day": 4.0,
+          "snow_days_per_month": 0.83,
+          "mean_daily_min_c": 6.38,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.58,
+          "wet_days_per_month": 12.2,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.83,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.64,
+          "wet_days_per_month": 12.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.73,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.52,
+          "wet_days_per_month": 14.07,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.05,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.93,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.41,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 7.52,
+          "wet_days_per_month": 11.23,
+          "snow_mm_swe_per_snow_day": 5.01,
+          "snow_days_per_month": 1.33,
+          "mean_daily_min_c": 4.54,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 6.65,
+          "wet_days_per_month": 9.1,
+          "snow_mm_swe_per_snow_day": 4.83,
+          "snow_days_per_month": 5.87,
+          "mean_daily_min_c": 0.33,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 4.89,
+          "wet_days_per_month": 5.9,
+          "snow_mm_swe_per_snow_day": 4.99,
+          "snow_days_per_month": 7.7,
+          "mean_daily_min_c": -4.53,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -5.7
+        },
+        "spring": {
+          "cold_baseline_c": 1.5
+        },
+        "summer": {
+          "cold_baseline_c": 12.6
+        },
+        "autumn": {
+          "cold_baseline_c": 4.8
+        }
+      },
+      "severe": {
+        "rain_mm": 18.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.27,
+        "snow_mm_swe": 11.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 4.43,
+        "cold_c": -11.0,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.3
+      },
+      "warnings": []
+    },
+    {
+      "city": "Munich DE",
+      "account": "Europe",
+      "country": "DE",
+      "latitude": 48.1351,
+      "longitude": 11.582,
+      "timezone": "Europe/Berlin",
+      "grid_elevation_m": 521.0,
+      "years_covered": 30,
+      "annual_rain_mm": 867.7,
+      "annual_snow_mm_swe": 97.7,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 4.86,
+          "wet_days_per_month": 8.1,
+          "snow_mm_swe_per_snow_day": 3.66,
+          "snow_days_per_month": 6.4,
+          "mean_daily_min_c": -3.4,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 4.38,
+          "wet_days_per_month": 7.2,
+          "snow_mm_swe_per_snow_day": 3.59,
+          "snow_days_per_month": 5.6,
+          "mean_daily_min_c": -3.36,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.23,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 3.27,
+          "snow_days_per_month": 3.53,
+          "mean_daily_min_c": -0.1,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 5.04,
+          "wet_days_per_month": 11.8,
+          "snow_mm_swe_per_snow_day": 3.83,
+          "snow_days_per_month": 1.17,
+          "mean_daily_min_c": 3.4,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.94,
+          "wet_days_per_month": 15.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.04,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.09,
+          "wet_days_per_month": 14.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.71,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.24,
+          "wet_days_per_month": 14.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.62,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.22,
+          "wet_days_per_month": 13.47,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.59,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 6.64,
+          "wet_days_per_month": 12.17,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.68,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.8,
+          "wet_days_per_month": 11.33,
+          "snow_mm_swe_per_snow_day": 2.49,
+          "snow_days_per_month": 0.33,
+          "mean_daily_min_c": 5.67,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 5.79,
+          "wet_days_per_month": 8.97,
+          "snow_mm_swe_per_snow_day": 3.54,
+          "snow_days_per_month": 2.6,
+          "mean_daily_min_c": 0.86,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 4.92,
+          "wet_days_per_month": 9.17,
+          "snow_mm_swe_per_snow_day": 3.23,
+          "snow_days_per_month": 6.2,
+          "mean_daily_min_c": -2.26,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -3.0
+        },
+        "spring": {
+          "cold_baseline_c": 3.8
+        },
+        "summer": {
+          "cold_baseline_c": 13.0
+        },
+        "autumn": {
+          "cold_baseline_c": 5.4
+        }
+      },
+      "severe": {
+        "rain_mm": 14.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 9.63,
+        "snow_mm_swe": 6.9,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.6,
+        "cold_c": -6.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.37
+      },
+      "warnings": []
+    },
+    {
+      "city": "Vienna AT",
+      "account": "Europe",
+      "country": "AT",
+      "latitude": 48.2082,
+      "longitude": 16.3738,
+      "timezone": "Europe/Vienna",
+      "grid_elevation_m": 179.0,
+      "years_covered": 30,
+      "annual_rain_mm": 599.1,
+      "annual_snow_mm_swe": 62.2,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 3.31,
+          "wet_days_per_month": 5.07,
+          "snow_mm_swe_per_snow_day": 3.63,
+          "snow_days_per_month": 4.23,
+          "mean_daily_min_c": -2.76,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 3.39,
+          "wet_days_per_month": 5.6,
+          "snow_mm_swe_per_snow_day": 3.79,
+          "snow_days_per_month": 2.97,
+          "mean_daily_min_c": -1.98,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 4.3,
+          "wet_days_per_month": 8.1,
+          "snow_mm_swe_per_snow_day": 4.28,
+          "snow_days_per_month": 1.97,
+          "mean_daily_min_c": 1.19,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.51,
+          "wet_days_per_month": 8.9,
+          "snow_mm_swe_per_snow_day": 4.27,
+          "snow_days_per_month": 0.6,
+          "mean_daily_min_c": 5.6,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.83,
+          "wet_days_per_month": 12.03,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.5,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 6.22,
+          "wet_days_per_month": 11.77,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.34,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 6.2,
+          "wet_days_per_month": 12.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.42,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.93,
+          "wet_days_per_month": 9.77,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 16.15,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.51,
+          "wet_days_per_month": 9.33,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.98,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.05,
+          "wet_days_per_month": 8.83,
+          "snow_mm_swe_per_snow_day": 4.77,
+          "snow_days_per_month": 0.2,
+          "mean_daily_min_c": 7.27,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.62,
+          "wet_days_per_month": 7.8,
+          "snow_mm_swe_per_snow_day": 3.78,
+          "snow_days_per_month": 1.5,
+          "mean_daily_min_c": 2.87,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 3.81,
+          "wet_days_per_month": 6.67,
+          "snow_mm_swe_per_snow_day": 3.57,
+          "snow_days_per_month": 3.07,
+          "mean_daily_min_c": -1.53,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -2.1
+        },
+        "spring": {
+          "cold_baseline_c": 5.8
+        },
+        "summer": {
+          "cold_baseline_c": 15.7
+        },
+        "autumn": {
+          "cold_baseline_c": 7.4
+        }
+      },
+      "severe": {
+        "rain_mm": 14.1,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 7.47,
+        "snow_mm_swe": 8.2,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 1.47,
+        "cold_c": -5.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.27
+      },
+      "warnings": []
+    },
+    {
+      "city": "Zurich CH",
+      "account": "Europe",
+      "country": "CH",
+      "latitude": 47.3769,
+      "longitude": 8.5417,
+      "timezone": "Europe/Zurich",
+      "grid_elevation_m": 409.0,
+      "years_covered": 30,
+      "annual_rain_mm": 1026.5,
+      "annual_snow_mm_swe": 101.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 5.85,
+          "wet_days_per_month": 9.6,
+          "snow_mm_swe_per_snow_day": 3.27,
+          "snow_days_per_month": 5.77,
+          "mean_daily_min_c": -1.39,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.37,
+          "wet_days_per_month": 8.33,
+          "snow_mm_swe_per_snow_day": 3.78,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -1.4,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.49,
+          "wet_days_per_month": 11.5,
+          "snow_mm_swe_per_snow_day": 3.56,
+          "snow_days_per_month": 3.87,
+          "mean_daily_min_c": 1.27,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 5.99,
+          "wet_days_per_month": 12.67,
+          "snow_mm_swe_per_snow_day": 3.8,
+          "snow_days_per_month": 1.43,
+          "mean_daily_min_c": 4.31,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 7.36,
+          "wet_days_per_month": 15.37,
+          "snow_mm_swe_per_snow_day": 1.3,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 8.73,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 7.39,
+          "wet_days_per_month": 15.37,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.64,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 7.89,
+          "wet_days_per_month": 14.7,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.8,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 7.86,
+          "wet_days_per_month": 13.93,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 15.09,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.74,
+          "wet_days_per_month": 11.57,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.32,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 6.96,
+          "wet_days_per_month": 11.73,
+          "snow_mm_swe_per_snow_day": 4.77,
+          "snow_days_per_month": 0.3,
+          "mean_daily_min_c": 7.4,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 6.86,
+          "wet_days_per_month": 10.7,
+          "snow_mm_swe_per_snow_day": 3.61,
+          "snow_days_per_month": 3.0,
+          "mean_daily_min_c": 2.7,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 6.22,
+          "wet_days_per_month": 10.8,
+          "snow_mm_swe_per_snow_day": 3.94,
+          "snow_days_per_month": 5.63,
+          "mean_daily_min_c": -0.34,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -1.0
+        },
+        "spring": {
+          "cold_baseline_c": 4.8
+        },
+        "summer": {
+          "cold_baseline_c": 14.2
+        },
+        "autumn": {
+          "cold_baseline_c": 7.1
+        }
+      },
+      "severe": {
+        "rain_mm": 17.1,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 10.4,
+        "snow_mm_swe": 7.4,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.63,
+        "cold_c": -3.8,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.53
+      },
+      "warnings": []
+    },
+    {
+      "city": "Stockholm SE",
+      "account": "Europe",
+      "country": "SE",
+      "latitude": 59.3293,
+      "longitude": 18.0686,
+      "timezone": "Europe/Stockholm",
+      "grid_elevation_m": 24.0,
+      "years_covered": 30,
+      "annual_rain_mm": 472.1,
+      "annual_snow_mm_swe": 104.4,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 3.23,
+          "wet_days_per_month": 4.83,
+          "snow_mm_swe_per_snow_day": 3.62,
+          "snow_days_per_month": 5.53,
+          "mean_daily_min_c": -3.35,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 2.88,
+          "wet_days_per_month": 2.83,
+          "snow_mm_swe_per_snow_day": 3.35,
+          "snow_days_per_month": 6.5,
+          "mean_daily_min_c": -3.85,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 2.97,
+          "wet_days_per_month": 4.7,
+          "snow_mm_swe_per_snow_day": 3.05,
+          "snow_days_per_month": 4.9,
+          "mean_daily_min_c": -1.98,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 3.3,
+          "wet_days_per_month": 7.17,
+          "snow_mm_swe_per_snow_day": 4.17,
+          "snow_days_per_month": 1.63,
+          "mean_daily_min_c": 1.74,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 4.31,
+          "wet_days_per_month": 9.2,
+          "snow_mm_swe_per_snow_day": 3.68,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 6.5,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.73,
+          "wet_days_per_month": 10.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.22,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 5.72,
+          "wet_days_per_month": 10.9,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.38,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.57,
+          "wet_days_per_month": 11.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.13,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.65,
+          "wet_days_per_month": 8.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 10.28,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.04,
+          "wet_days_per_month": 9.33,
+          "snow_mm_swe_per_snow_day": 3.42,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 5.43,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.09,
+          "wet_days_per_month": 8.67,
+          "snow_mm_swe_per_snow_day": 3.68,
+          "snow_days_per_month": 2.83,
+          "mean_daily_min_c": 1.57,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 3.59,
+          "wet_days_per_month": 6.77,
+          "snow_mm_swe_per_snow_day": 3.58,
+          "snow_days_per_month": 5.4,
+          "mean_daily_min_c": -1.74,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": -3.0
+        },
+        "spring": {
+          "cold_baseline_c": 2.1
+        },
+        "summer": {
+          "cold_baseline_c": 13.3
+        },
+        "autumn": {
+          "cold_baseline_c": 5.8
+        }
+      },
+      "severe": {
+        "rain_mm": 11.2,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 6.73,
+        "snow_mm_swe": 6.9,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 2.8,
+        "cold_c": -7.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.47
+      },
+      "warnings": []
+    },
+    {
+      "city": "Copenhagen DK",
+      "account": "Europe",
+      "country": "DK",
+      "latitude": 55.6761,
+      "longitude": 12.5683,
+      "timezone": "Europe/Copenhagen",
+      "grid_elevation_m": 10.0,
+      "years_covered": 30,
+      "annual_rain_mm": 619.5,
+      "annual_snow_mm_swe": 54.0,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 3.86,
+          "wet_days_per_month": 9.2,
+          "snow_mm_swe_per_snow_day": 3.15,
+          "snow_days_per_month": 4.13,
+          "mean_daily_min_c": -0.42,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 3.46,
+          "wet_days_per_month": 7.23,
+          "snow_mm_swe_per_snow_day": 3.39,
+          "snow_days_per_month": 4.3,
+          "mean_daily_min_c": -0.59,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 3.77,
+          "wet_days_per_month": 8.63,
+          "snow_mm_swe_per_snow_day": 3.05,
+          "snow_days_per_month": 2.53,
+          "mean_daily_min_c": 0.6,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 3.97,
+          "wet_days_per_month": 9.33,
+          "snow_mm_swe_per_snow_day": 2.39,
+          "snow_days_per_month": 0.43,
+          "mean_daily_min_c": 3.77,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 4.82,
+          "wet_days_per_month": 10.2,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 8.01,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 6.13,
+          "wet_days_per_month": 11.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.8,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 5.79,
+          "wet_days_per_month": 12.0,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.28,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.84,
+          "wet_days_per_month": 12.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.57,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.23,
+          "wet_days_per_month": 10.53,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 11.65,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 4.91,
+          "wet_days_per_month": 11.87,
+          "snow_mm_swe_per_snow_day": 1.8,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 7.77,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.16,
+          "wet_days_per_month": 10.73,
+          "snow_mm_swe_per_snow_day": 3.81,
+          "snow_days_per_month": 0.87,
+          "mean_daily_min_c": 4.1,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 4.15,
+          "wet_days_per_month": 10.1,
+          "snow_mm_swe_per_snow_day": 3.36,
+          "snow_days_per_month": 2.67,
+          "mean_daily_min_c": 0.98,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 0.0
+        },
+        "spring": {
+          "cold_baseline_c": 4.1
+        },
+        "summer": {
+          "cold_baseline_c": 13.6
+        },
+        "autumn": {
+          "cold_baseline_c": 7.8
+        }
+      },
+      "severe": {
+        "rain_mm": 11.4,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 8.77,
+        "snow_mm_swe": 6.5,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 1.6,
+        "cold_c": -3.6,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.57
+      },
+      "warnings": []
+    },
+    {
+      "city": "Amsterdam NL",
+      "account": "Europe",
+      "country": "NL",
+      "latitude": 52.3676,
+      "longitude": 4.9041,
+      "timezone": "Europe/Amsterdam",
+      "grid_elevation_m": 5.0,
+      "years_covered": 30,
+      "annual_rain_mm": 777.8,
+      "annual_snow_mm_swe": 17.7,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 4.87,
+          "wet_days_per_month": 11.97,
+          "snow_mm_swe_per_snow_day": 3.03,
+          "snow_days_per_month": 1.07,
+          "mean_daily_min_c": 1.84,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 4.72,
+          "wet_days_per_month": 9.93,
+          "snow_mm_swe_per_snow_day": 2.56,
+          "snow_days_per_month": 1.43,
+          "mean_daily_min_c": 1.72,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 4.5,
+          "wet_days_per_month": 10.93,
+          "snow_mm_swe_per_snow_day": 2.69,
+          "snow_days_per_month": 0.77,
+          "mean_daily_min_c": 3.38,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 4.35,
+          "wet_days_per_month": 10.97,
+          "snow_mm_swe_per_snow_day": 3.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 5.89,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 5.28,
+          "wet_days_per_month": 11.33,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.49,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.49,
+          "wet_days_per_month": 11.93,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.37,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 5.94,
+          "wet_days_per_month": 13.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.65,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 6.04,
+          "wet_days_per_month": 13.4,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.79,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 5.56,
+          "wet_days_per_month": 12.13,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 12.4,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 5.35,
+          "wet_days_per_month": 12.57,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.11,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 4.67,
+          "wet_days_per_month": 12.9,
+          "snow_mm_swe_per_snow_day": 3.09,
+          "snow_days_per_month": 0.27,
+          "mean_daily_min_c": 5.52,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 5.15,
+          "wet_days_per_month": 12.4,
+          "snow_mm_swe_per_snow_day": 3.65,
+          "snow_days_per_month": 1.27,
+          "mean_daily_min_c": 2.68,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 2.1
+        },
+        "spring": {
+          "cold_baseline_c": 6.3
+        },
+        "summer": {
+          "cold_baseline_c": 14.0
+        },
+        "autumn": {
+          "cold_baseline_c": 9.0
+        }
+      },
+      "severe": {
+        "rain_mm": 12.5,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 10.37,
+        "snow_mm_swe": 5.5,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 0.5,
+        "cold_c": -1.9,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 18.6
+      },
+      "warnings": []
+    },
+    {
+      "city": "Barcelona ES",
+      "account": "Europe",
+      "country": "ES",
+      "latitude": 41.3851,
+      "longitude": 2.1734,
+      "timezone": "Europe/Madrid",
+      "grid_elevation_m": 28.0,
+      "years_covered": 30,
+      "annual_rain_mm": 587.6,
+      "annual_snow_mm_swe": 2.8,
+      "months": {
+        "1": {
+          "month_name": "Jan",
+          "rain_mm_per_wet_day": 6.46,
+          "wet_days_per_month": 6.07,
+          "snow_mm_swe_per_snow_day": 1.94,
+          "snow_days_per_month": 0.17,
+          "mean_daily_min_c": 5.21,
+          "observation_days": 930
+        },
+        "2": {
+          "month_name": "Feb",
+          "rain_mm_per_wet_day": 5.41,
+          "wet_days_per_month": 6.1,
+          "snow_mm_swe_per_snow_day": 2.45,
+          "snow_days_per_month": 0.27,
+          "mean_daily_min_c": 5.46,
+          "observation_days": 848
+        },
+        "3": {
+          "month_name": "Mar",
+          "rain_mm_per_wet_day": 5.7,
+          "wet_days_per_month": 6.67,
+          "snow_mm_swe_per_snow_day": 6.73,
+          "snow_days_per_month": 0.1,
+          "mean_daily_min_c": 7.49,
+          "observation_days": 930
+        },
+        "4": {
+          "month_name": "Apr",
+          "rain_mm_per_wet_day": 6.05,
+          "wet_days_per_month": 8.5,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 9.73,
+          "observation_days": 900
+        },
+        "5": {
+          "month_name": "May",
+          "rain_mm_per_wet_day": 6.15,
+          "wet_days_per_month": 7.1,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 13.29,
+          "observation_days": 930
+        },
+        "6": {
+          "month_name": "Jun",
+          "rain_mm_per_wet_day": 5.96,
+          "wet_days_per_month": 5.67,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.31,
+          "observation_days": 900
+        },
+        "7": {
+          "month_name": "Jul",
+          "rain_mm_per_wet_day": 4.71,
+          "wet_days_per_month": 4.6,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 20.29,
+          "observation_days": 930
+        },
+        "8": {
+          "month_name": "Aug",
+          "rain_mm_per_wet_day": 5.85,
+          "wet_days_per_month": 6.57,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 20.87,
+          "observation_days": 930
+        },
+        "9": {
+          "month_name": "Sep",
+          "rain_mm_per_wet_day": 7.1,
+          "wet_days_per_month": 10.83,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 17.93,
+          "observation_days": 900
+        },
+        "10": {
+          "month_name": "Oct",
+          "rain_mm_per_wet_day": 9.25,
+          "wet_days_per_month": 9.73,
+          "snow_mm_swe_per_snow_day": null,
+          "snow_days_per_month": 0.0,
+          "mean_daily_min_c": 14.44,
+          "observation_days": 930
+        },
+        "11": {
+          "month_name": "Nov",
+          "rain_mm_per_wet_day": 7.41,
+          "wet_days_per_month": 8.03,
+          "snow_mm_swe_per_snow_day": 1.0,
+          "snow_days_per_month": 0.03,
+          "mean_daily_min_c": 9.48,
+          "observation_days": 900
+        },
+        "12": {
+          "month_name": "Dec",
+          "rain_mm_per_wet_day": 6.98,
+          "wet_days_per_month": 5.7,
+          "snow_mm_swe_per_snow_day": 4.42,
+          "snow_days_per_month": 0.13,
+          "mean_daily_min_c": 6.31,
+          "observation_days": 930
+        }
+      },
+      "seasons": {
+        "winter": {
+          "cold_baseline_c": 5.7
+        },
+        "spring": {
+          "cold_baseline_c": 10.2
+        },
+        "summer": {
+          "cold_baseline_c": 19.5
+        },
+        "autumn": {
+          "cold_baseline_c": 14.0
+        }
+      },
+      "severe": {
+        "rain_mm": 18.8,
+        "rain_percentile": 93.0,
+        "rain_days_per_year": 6.03,
+        "snow_mm_swe": 5.3,
+        "snow_percentile": 90.0,
+        "snow_days_per_year": 0.1,
+        "cold_c": 3.3,
+        "cold_percentile": 5.0,
+        "cold_days_per_year": 19.13
+      },
+      "warnings": []
+    }
+  ]
+}
