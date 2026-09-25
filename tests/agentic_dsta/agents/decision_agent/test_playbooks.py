@@ -399,11 +399,12 @@ class TestSampleConfigRenders:
 
     def test_activation_rules_name_the_exact_signal_and_default_threshold(self):
         # The old free-text rules left "temperature below 9" open to reading as
-        # the mean or current value. The template must pin min for Cold and max
-        # for Warm.
+        # the mean or current value. The template must pin min for Cold, and
+        # Sunny must be a sky-condition test, not a temperature test.
         rendered = self._render_asset_groups({"city": "Vancouver BC"})
         assert "min_temperature_c < 9.0" in rendered
-        assert "max_temperature_c > 10.0" in rendered
+        assert "sunny_daytime_hours >= 3" in rendered
+        assert "max_temperature_c" not in rendered
         assert "max_rain_rate_mm_per_h >= 0.2" in rendered
         assert "'_COLD_'" in rendered and "'_SUN_'" in rendered
 
@@ -413,8 +414,15 @@ class TestSampleConfigRenders:
         )
         assert "min_temperature_c < 0.0" in rendered
         # The other thresholds keep the playbook defaults.
-        assert "max_temperature_c > 10.0" in rendered
+        assert "sunny_daytime_hours >= 3" in rendered
         assert "max_rain_rate_mm_per_h >= 0.2" in rendered
+
+    def test_a_campaign_can_override_the_sunny_hours(self):
+        rendered = self._render_asset_groups(
+            {"city": "Vancouver BC", "activation": {"sunnyMinHours": 6}}
+        )
+        assert "sunny_daytime_hours >= 6" in rendered
+        assert "min_temperature_c < 9.0" in rendered
 
     def test_missing_tokens_make_the_asset_group_playbook_unrenderable(self):
         # Matching asset groups on a guessed token is worse than skipping.

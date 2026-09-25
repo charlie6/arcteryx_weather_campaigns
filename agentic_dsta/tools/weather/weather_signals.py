@@ -90,6 +90,15 @@ _RAIN_CONDITION_TYPES = frozenset({
     "THUNDERSTORMS",
 })
 
+# weatherCondition.type values that count as sunny for the Sunny condition.
+# PARTLY_CLOUDY is included deliberately: the business rule is "sunny, partly
+# cloudy is also fine". MOSTLY_CLOUDY and anything wetter are excluded.
+_SUNNY_CONDITION_TYPES = frozenset({
+    "CLEAR",
+    "MOSTLY_CLEAR",
+    "PARTLY_CLOUDY",
+})
+
 # precipitation.probability.type values indicating snow.
 _SNOW_PROBABILITY_TYPES = frozenset({"SNOW", "RAIN_AND_SNOW", "FREEZING_RAIN", "SLEET"})
 
@@ -301,6 +310,27 @@ def _hour_is_rain(hour: Dict[str, Any], rain_mm: float) -> bool:
   return _probability_indicates(hour, _RAIN_PROBABILITY_TYPES)
 
 
+def _hour_is_sunny_daytime(hour: Dict[str, Any]) -> bool:
+  """Reports whether an hourly record is a sunny daylight hour.
+
+  A clear night is not sunny, so the hour must also be flagged as daytime. An
+  hour with no ``isDaytime`` value is not counted: guessing daylight from the
+  clock would need the location's sunrise and sunset, and under-counting is the
+  safer failure for a condition that switches ads on.
+
+  Args:
+      hour: A ForecastHour dictionary.
+
+  Returns:
+      True if ``isDaytime`` is true and the condition type is one of
+      ``_SUNNY_CONDITION_TYPES``.
+  """
+  if hour.get("isDaytime") is not True:
+    return False
+  condition = (hour.get("weatherCondition") or {}).get("type")
+  return condition in _SUNNY_CONDITION_TYPES
+
+
 def get_24h_weather_signals(
     latitude: float, longitude: float, hours: int = _DEFAULT_WINDOW_HOURS
 ) -> Dict[str, Any]:
@@ -331,6 +361,11 @@ def get_24h_weather_signals(
           no hour reported a usable temperature.
       rain_present, snow_present
           Whether any hour in the window indicates that precipitation type.
+      daytime_hours
+          Number of hours in the window flagged as daytime by the API.
+      sunny_daytime_hours
+          Number of daytime hours whose condition is CLEAR, MOSTLY_CLEAR or
+          PARTLY_CLOUDY. Drives the Sunny condition.
       hours_requested, hours_received
           Coverage of the window. A short response narrows the window actually
           summarised, so these should be checked before acting on a threshold.
@@ -401,6 +436,8 @@ def get_24h_weather_signals(
   condition_types = set()
   rain_present = False
   snow_present = False
+  daytime_hours = 0
+  sunny_daytime_hours = 0
 
   for hour in forecast_hours:
     precipitation = hour.get("precipitation") or {}
@@ -423,6 +460,10 @@ def get_24h_weather_signals(
       rain_present = True
     if _hour_is_snow(hour, snow_mm):
       snow_present = True
+    if hour.get("isDaytime") is True:
+      daytime_hours += 1
+    if _hour_is_sunny_daytime(hour):
+      sunny_daytime_hours += 1
 
   result = {
       "success": True,
@@ -441,6 +482,8 @@ def get_24h_weather_signals(
       ),
       "rain_present": rain_present,
       "snow_present": snow_present,
+      "daytime_hours": daytime_hours,
+      "sunny_daytime_hours": sunny_daytime_hours,
       "condition_types": sorted(condition_types),
       "snow_units_note": (
           "snow_accumulation_mm is liquid water equivalent, not snow depth."
@@ -467,6 +510,7 @@ def get_24h_weather_signals(
           "rain_accumulation_mm": result["rain_accumulation_mm"],
           "snow_accumulation_mm": result["snow_accumulation_mm"],
           "min_temperature_c": result["min_temperature_c"],
+          "sunny_daytime_hours": sunny_daytime_hours,
       },
   )
   return result

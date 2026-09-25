@@ -39,6 +39,7 @@ def _hour(
     condition=None,
     precip_type=None,
     precip_percent=80,
+    is_daytime=None,
 ):
   """Builds a single ForecastHour payload."""
   precipitation = {}
@@ -57,6 +58,8 @@ def _hour(
     hour["temperature"] = {"degrees": temp_c, "unit": "CELSIUS"}
   if condition:
     hour["weatherCondition"] = {"type": condition}
+  if is_daytime is not None:
+    hour["isDaytime"] = is_daytime
   return hour
 
 
@@ -444,3 +447,48 @@ class TestToolsetRegistration(unittest.TestCase):
 
 if __name__ == "__main__":
   unittest.main()
+
+
+@patch.dict("os.environ", {"GOOGLE_WEATHER_API_API_KEY": "test-key"}, clear=False)
+class TestSunnyDaytimeHours(unittest.TestCase):
+
+  @patch(f"{MODULE}.requests.get")
+  def test_clear_mostly_clear_and_partly_cloudy_daylight_hours_count(
+      self, mock_get
+  ):
+    mock_get.return_value = _response([
+        _hour(condition="CLEAR", is_daytime=True),
+        _hour(condition="MOSTLY_CLEAR", is_daytime=True),
+        _hour(condition="PARTLY_CLOUDY", is_daytime=True),
+        _hour(condition="MOSTLY_CLOUDY", is_daytime=True),
+        _hour(condition="CLOUDY", is_daytime=True),
+        _hour(condition="LIGHT_RAIN", is_daytime=True),
+    ])
+
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=6)
+
+    self.assertEqual(result["daytime_hours"], 6)
+    self.assertEqual(result["sunny_daytime_hours"], 3)
+
+  @patch(f"{MODULE}.requests.get")
+  def test_a_clear_night_is_not_sunny(self, mock_get):
+    mock_get.return_value = _response(
+        [_hour(condition="CLEAR", is_daytime=False) for _ in range(4)]
+    )
+
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=4)
+
+    self.assertEqual(result["daytime_hours"], 0)
+    self.assertEqual(result["sunny_daytime_hours"], 0)
+
+  @patch(f"{MODULE}.requests.get")
+  def test_missing_daytime_flag_is_not_counted(self, mock_get):
+    # Without isDaytime we cannot tell a clear day from a clear night, and
+    # under-counting is the safer failure for a condition that enables ads.
+    mock_get.return_value = _response(
+        [_hour(condition="CLEAR") for _ in range(3)]
+    )
+
+    result = weather_signals.get_24h_weather_signals(VAN_LAT, VAN_LON, hours=3)
+
+    self.assertEqual(result["sunny_daytime_hours"], 0)

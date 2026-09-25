@@ -76,11 +76,13 @@ substitute a different temperature or an average.
          asset group name contains '{{assetGroupTokens.Rain}}'
   Snow : snow_present is true
          asset group name contains '{{assetGroupTokens.Snow}}'
-  Warm : max_temperature_c > {{activation.warmAboveC}}
-         (the HIGHEST temperature in the look-ahead)
-         asset group name contains '{{assetGroupTokens.Warm}}'
-Because Cold uses the minimum and Warm the maximum, both can be active on the same day.
-Evaluate each on its own and do not suppress one because the other is active.
+  Sunny: sunny_daytime_hours >= {{activation.sunnyMinHours}}
+         (daylight hours forecast CLEAR, MOSTLY_CLEAR or PARTLY_CLOUDY; temperature is
+         NOT part of this test)
+         asset group name contains '{{assetGroupTokens.Sunny}}'
+Sunny and Rain can both be active on the same day, for example a sunny morning followed by
+an afternoon shower. Evaluate each on its own and do not suppress one because another is
+active.
 For each condition record whether it is active in this look-ahead, together with the observed
 value and the threshold you compared it against.
 
@@ -204,7 +206,7 @@ city's threshold from STEP 1.
   SNOW severe : snow_accumulation_mm >= severeThresholds.snowMmSwe
   COLD severe : min_temperature_c <= severeThresholds.coldC
 Note the direction: rain and snow trigger at or ABOVE the threshold, cold at or BELOW it.
-Hot and warm conditions NEVER qualify for a budget change.
+Sunny NEVER qualifies for a budget change.
 SEVERE is true if any single test passes. Increases never stack: if several conditions qualify
 on the same day the increase is still {{severeModifiers.budgetBumpPct}} percent in total.
 
@@ -326,7 +328,9 @@ SHARED_PLAYBOOKS = [
                 # params.activation; the rest keep these values.
                 "activation": {
                     "coldBelowC": 9.0,
-                    "warmAboveC": 10.0,
+                    # Daylight hours in the look-ahead forecast as clear,
+                    # mostly clear or partly cloudy.
+                    "sunnyMinHours": 3,
                     "rainRateMmPerH": 0.2,
                 },
             },
@@ -399,7 +403,7 @@ CONFIG = [
                 "Cold": "_COLD_",
                 "Rain": "_RAIN_",
                 "Snow": "_SNOW_",
-                "Warm": "_SUN_",
+                "Sunny": "_SUN_",
             },
             "campaigns": [
                 {
@@ -472,7 +476,7 @@ CONFIG = [
                 "Cold": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
                 "Rain": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
                 "Snow": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
-                "Warm": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
+                "Sunny": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
             },
             "lastRunId": None,
             "lastRunAt": None,
@@ -518,7 +522,7 @@ SANDBOX_CONFIG = [
                 "Cold": "_COLD",
                 "Rain": "_RAIN",
                 "Snow": "_SNOW",
-                "Warm": "_SUN",
+                "Sunny": "_SUN",
             },
             "campaigns": [
                 {
@@ -567,7 +571,7 @@ SANDBOX_CONFIG = [
                 "Cold": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
                 "Rain": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
                 "Snow": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
-                "Warm": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
+                "Sunny": {"runsSinceLastSeen": 99, "currentStatus": "PAUSED"},
             },
             "lastRunId": None,
             "lastRunAt": None,
