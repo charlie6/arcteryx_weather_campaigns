@@ -288,9 +288,9 @@ variable "sa_run_sse_scheduler_job_timezone" {
 variable "sa_run_sse_scheduler_job_attempt_deadline" {
   description = <<-EOT
     How long Cloud Scheduler waits for a run to respond (HTTP targets allow
-    15s-1800s). A run processes every campaign sequentially in one request
-    (about 30-130s per campaign), so the old 180s default produced
-    DEADLINE_EXCEEDED once runs grew.
+    15s-1800s). A run processes every campaign in one request, up to
+    max_concurrent_campaigns at a time (about 2-4 minutes per campaign), so
+    the old 180s default produced DEADLINE_EXCEEDED once runs grew.
   EOT
   type        = string
   default     = "1800s"
@@ -300,6 +300,43 @@ variable "cloud_run_request_timeout" {
   description = "Cloud Run request timeout. Keep >= the scheduler attempt deadline."
   type        = string
   default     = "1800s"
+}
+
+variable "cloud_run_cpu" {
+  description = "vCPU for the Cloud Run service. Campaigns run in parallel threads; 2 gives headroom for TLS/gRPC/protobuf work."
+  type        = string
+  default     = "2"
+}
+
+variable "cloud_run_memory" {
+  description = "Memory for the Cloud Run service. Each campaign in flight holds its own API clients; 2Gi covers 5-10 in parallel."
+  type        = string
+  default     = "2Gi"
+}
+
+variable "max_concurrent_campaigns" {
+  description = <<-EOT
+    How many campaigns a run processes at once (1-20). Each campaign takes
+    about 2-4 minutes, so 5 handles ~20 campaigns inside the 30-minute
+    scheduler deadline. Higher values raise Gemini / Google Ads request rates;
+    watch the dependency error alert for 429s. Use 1 for strictly sequential.
+  EOT
+  type        = number
+  default     = 5
+  validation {
+    condition     = var.max_concurrent_campaigns >= 1 && var.max_concurrent_campaigns <= 20
+    error_message = "max_concurrent_campaigns must be between 1 and 20."
+  }
+}
+
+variable "playbook_timeout_seconds" {
+  description = "Per-playbook time limit (60-1800). A playbook normally takes 30-220s; this stops a hung call from consuming the run."
+  type        = number
+  default     = 600
+  validation {
+    condition     = var.playbook_timeout_seconds >= 60 && var.playbook_timeout_seconds <= 1800
+    error_message = "playbook_timeout_seconds must be between 60 and 1800."
+  }
 }
 
 

@@ -70,3 +70,15 @@ variable "request_timeout" {
   type        = string
   default     = "1800s"
 }
+
+variable "cpu" {
+  description = "vCPU limit for the container, e.g. \"1\", \"2\"."
+  type        = string
+  default     = "2"
+}
+
+variable "memory" {
+  description = "Memory limit for the container, e.g. \"1Gi\", \"2Gi\"."
+  type        = string
+  default     = "2Gi"
+}

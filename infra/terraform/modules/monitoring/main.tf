@@ -485,9 +485,9 @@ resource "google_monitoring_alert_policy" "slow_run" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **Run `$${log.extracted_label.run_id}` took more than ${var.run_duration_warning_seconds}s.** Campaigns run one after another in a single request, so adding campaigns will soon hit the scheduler deadline (DEADLINE_EXCEEDED).
+      **Run `$${log.extracted_label.run_id}` took more than ${var.run_duration_warning_seconds}s.** All campaigns run in a single request, `max_concurrent_campaigns` at a time, so adding campaigns will eventually hit the scheduler deadline (DEADLINE_EXCEEDED).
 
-      Options: cut the number of campaigns per account, raise `sa_run_sse_scheduler_job_attempt_deadline` (max 1800s), or split accounts across jobs.
+      Options: raise `max_concurrent_campaigns` in config.yaml (watch for Gemini 429s), raise `sa_run_sse_scheduler_job_attempt_deadline` (max 1800s), or split accounts across jobs.
 
       ${local.runbook_footer}
     EOT

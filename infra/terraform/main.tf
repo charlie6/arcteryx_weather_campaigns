@@ -104,6 +104,8 @@ module "cloud_run_service" {
   allow_unauthenticated = var.allow_unauthenticated
   service_account_email = google_service_account.run_sa.email
   request_timeout       = var.cloud_run_request_timeout
+  cpu                   = var.cloud_run_cpu
+  memory                = var.cloud_run_memory
 
   env_vars = merge(var.run_service_env_vars, {
     GOOGLE_CLOUD_PROJECT          = var.project_id
@@ -119,6 +121,8 @@ module "cloud_run_service" {
     GOOGLE_ADS_LOGIN_CUSTOMER_ID = var.google_ads_login_customer_id
     PYTHONUNBUFFERED              = "1"
     LOG_LEVEL                     = var.log_level
+    ADSTA_MAX_CONCURRENT_CAMPAIGNS = tostring(var.max_concurrent_campaigns)
+    ADSTA_PLAYBOOK_TIMEOUT_SECONDS = tostring(var.playbook_timeout_seconds)
   })
   secret_env_vars = { for secret in module.secret_manager.secret_ids : secret => { name = secret, version = "latest" } }
   depends_on = [google_project_service.apis, module.secret_manager]

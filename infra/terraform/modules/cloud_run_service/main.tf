@@ -25,6 +25,19 @@ resource "google_cloud_run_v2_service" "default" {
       image = var.image_url
       ports { container_port = var.container_port }
 
+      # Sized for parallel campaign processing: one worker thread per campaign
+      # in flight, each holding its own Google Ads, Gemini and HTTP clients.
+      # cpu_idle = true keeps request-based billing (CPU only while a request
+      # is running), which suits two short runs a day.
+      resources {
+        limits = {
+          cpu    = var.cpu
+          memory = var.memory
+        }
+        cpu_idle          = true
+        startup_cpu_boost = true
+      }
+
       startup_probe {
         initial_delay_seconds = 10
         timeout_seconds       = 10

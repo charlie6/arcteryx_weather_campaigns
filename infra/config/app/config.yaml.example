@@ -43,6 +43,16 @@ sa_run_sse_scheduler_job_timezone: "America/Vancouver"
 gemini_model: "gemini-3.5-flash"
 gemini_location: "us"
 
+# Parallel campaign processing. Each campaign takes ~2-4 minutes; with 5 in
+# parallel ~20 campaigns finish well inside the 30-minute scheduler deadline.
+# Raise for bigger accounts (max 20); set 1 for strictly sequential runs.
+max_concurrent_campaigns: 5
+# Per-playbook time limit in seconds (60-1800).
+playbook_timeout_seconds: 600
+# Cloud Run size. Defaults suit 5-10 campaigns in parallel.
+cloud_run_cpu: "2"
+cloud_run_memory: "2Gi"
+
 additional_secrets: ["GOOGLE_API_KEY"]
 #  - MY_CUSTOM_API_KEY
 #  - ANOTHER_API_SECRET

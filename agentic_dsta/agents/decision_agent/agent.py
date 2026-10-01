@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This agent is responsible for managing marketing campaigns for customers stored in Firestore."""
+import asyncio
+import concurrent.futures
+import dataclasses
 import datetime
+import functools
 import logging
 import math
 import os
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import uuid
 
 from google.genai import Client
@@ -66,6 +70,19 @@ GEMINI_LOCATION = (
     or "us"
 )
 LOCATION = GEMINI_LOCATION
+
+# Campaigns are processed in parallel, each in its own worker thread. At about
+# 2-4 minutes per campaign, 5 at a time handles ~20 campaigns well inside the
+# 30-minute scheduler deadline while keeping Gemini and Google Ads request
+# rates modest. Raise it for larger accounts; watch for 429s.
+MAX_CONCURRENT_CAMPAIGNS_ENV = "ADSTA_MAX_CONCURRENT_CAMPAIGNS"
+DEFAULT_MAX_CONCURRENT_CAMPAIGNS = 5
+MAX_CONCURRENT_CAMPAIGNS_LIMIT = 20
+
+# One playbook normally takes 30-220s. The limit stops a hung call from holding
+# the run past the scheduler deadline.
+PLAYBOOK_TIMEOUT_ENV = "ADSTA_PLAYBOOK_TIMEOUT_SECONDS"
+DEFAULT_PLAYBOOK_TIMEOUT_SECONDS = 600
 
 
 def get_current_datetime() -> Dict[str, Any]:
@@ -664,6 +681,309 @@ def _check_change_volume_guard(
         )
 
 
+@dataclasses.dataclass
+class _CampaignJob:
+    """A campaign prepared for execution.
+
+    Attributes:
+        index: 1-based position in the account's campaign list (for logs).
+        total: Number of campaigns in the account's config.
+        campaign: The campaign config entry.
+        instructions: Rendered (playbook_id, instruction) pairs, in run order.
+    """
+
+    index: int
+    total: int
+    campaign: Dict[str, Any]
+    instructions: List[Tuple[str, str]]
+
+
+@dataclasses.dataclass
+class _CampaignResult:
+    """What happened to one campaign.
+
+    Attributes:
+        campaign_id: The campaign ID.
+        eligible: True if its playbooks were run (it passed the name guard).
+        skipped: True if the name guard skipped it.
+        succeeded: Playbook executions that completed.
+        failed: Playbook executions that raised or timed out.
+    """
+
+    campaign_id: str
+    eligible: bool = False
+    skipped: bool = False
+    succeeded: int = 0
+    failed: int = 0
+
+
+def _int_setting(env_name: str, default: int, minimum: int, maximum: int) -> int:
+    """Reads a bounded integer setting from the environment.
+
+    Args:
+        env_name: Environment variable name.
+        default: Value used when the variable is unset or invalid.
+        minimum: Smallest allowed value.
+        maximum: Largest allowed value.
+
+    Returns:
+        The setting, clamped to [minimum, maximum].
+    """
+    raw = os.environ.get(env_name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Invalid %s=%r; using %d.", env_name, raw, default)
+        return default
+    clamped = max(minimum, min(value, maximum))
+    if clamped != value:
+        logger.warning("%s=%d is outside [%d, %d]; using %d.", env_name, value, minimum, maximum, clamped)
+    return clamped
+
+
+def _max_concurrent_campaigns() -> int:
+    """How many campaigns run at once (ADSTA_MAX_CONCURRENT_CAMPAIGNS)."""
+    return _int_setting(
+        MAX_CONCURRENT_CAMPAIGNS_ENV, DEFAULT_MAX_CONCURRENT_CAMPAIGNS, 1, MAX_CONCURRENT_CAMPAIGNS_LIMIT
+    )
+
+
+def _playbook_timeout_seconds() -> int:
+    """Per-playbook time limit in seconds (ADSTA_PLAYBOOK_TIMEOUT_SECONDS)."""
+    return _int_setting(PLAYBOOK_TIMEOUT_ENV, DEFAULT_PLAYBOOK_TIMEOUT_SECONDS, 60, 1800)
+
+
+async def _run_playbook(
+    customer_id: str,
+    usecase: str,
+    run_id: str,
+    campaign_id: Any,
+    playbook_id: str,
+    instruction: str,
+) -> None:
+    """Runs one playbook for one campaign in a fresh agent and session.
+
+    Args:
+        customer_id: Google Ads customer ID.
+        usecase: Target platform, for event labels.
+        run_id: The current run id.
+        campaign_id: The campaign being processed.
+        playbook_id: The playbook being run.
+        instruction: The rendered playbook instruction.
+    """
+    agent = create_agent(
+        instruction=instruction,
+        run_context={
+            "customer_id": customer_id,
+            "usecase": usecase,
+            "run_id": run_id,
+            "campaign_id": campaign_id,
+            "playbook_id": playbook_id,
+        },
+    )
+    app = apps.App(name="decision_app", root_agent=agent)
+    runner = runners.InMemoryRunner(app=app)
+
+    session_id = str(uuid.uuid4())
+    await runner.session_service.create_session(
+        session_id=session_id, user_id=customer_id, app_name="decision_app"
+    )
+    prompt_text = (
+        f"Proceed with playbook '{playbook_id}' for Campaign {campaign_id} "
+        "based on your instructions."
+    )
+    content = types.Content(parts=[types.Part(text=prompt_text)])
+
+    logger.info(
+        "Executing playbook '%s' for Campaign %s (session_id=%s, run_id=%s)",
+        playbook_id,
+        campaign_id,
+        session_id,
+        run_id,
+        extra={"campaign_id": str(campaign_id), "playbook_id": playbook_id, "run_id": run_id},
+    )
+    async for chunk in runner.run_async(user_id=customer_id, session_id=session_id, new_message=content):
+        _log_agent_chunk(chunk, str(campaign_id))
+
+
+async def _run_playbook_with_timeout(timeout_s: int, **kwargs: Any) -> None:
+    """Runs _run_playbook, raising a descriptive TimeoutError after timeout_s.
+
+    The timeout exists so that one hung model or API call cannot hold the
+    whole run past the scheduler deadline, which would lose every other
+    campaign's run_completed accounting. Cancellation takes effect at the next
+    await, so a tool call already in progress finishes first.
+    """
+    try:
+        await asyncio.wait_for(_run_playbook(**kwargs), timeout=timeout_s)
+    except asyncio.TimeoutError as err:
+        raise TimeoutError(f"playbook timed out after {timeout_s}s") from err
+
+
+def _process_campaign(
+    job: _CampaignJob,
+    *,
+    customer_id: str,
+    usecase: str,
+    run_id: str,
+    account: str,
+    playbook_timeout_s: int,
+) -> _CampaignResult:
+    """Processes one campaign: name guard, then each playbook in order.
+
+    Runs in a worker thread. Every playbook gets its own event loop
+    (asyncio.run), agent and session, so nothing is shared with other
+    campaigns running at the same time.
+
+    Args:
+        job: The prepared campaign.
+        customer_id: Google Ads customer ID.
+        usecase: Target platform, for event labels.
+        run_id: The current run id.
+        account: Account label for the change log.
+        playbook_timeout_s: Per-playbook time limit.
+
+    Returns:
+        The campaign's result.
+    """
+    campaign_id = job.campaign.get("campaignId")
+    result = _CampaignResult(campaign_id=str(campaign_id))
+    logger.info(
+        "--- Processing Campaign %d/%d: ID=%s ---",
+        job.index,
+        job.total,
+        campaign_id,
+        extra={"campaign_id": str(campaign_id), "campaign_index": job.index, "total_campaigns": job.total},
+    )
+
+    # Deterministic safety check, enforced in code rather than left to the
+    # model: never act on a campaign whose name does not match the config.
+    mismatch = _campaign_name_mismatch(customer_id, job.campaign)
+    if mismatch:
+        _report_campaign_skipped(FirestoreToolset(), customer_id, job.campaign, run_id, account, mismatch)
+        result.skipped = True
+        return result
+
+    result.eligible = True
+    campaign_start_time = time.perf_counter()
+
+    # Isolation is per (campaign, playbook) rather than per campaign so that a
+    # campaign missing its Severe Modifiers params still gets its asset groups
+    # toggled, per section 7 of the spec. Playbooks run in order: the budget
+    # playbook must see the asset group state the first one left behind.
+    for playbook_id, instruction in job.instructions:
+        try:
+            asyncio.run(
+                _run_playbook_with_timeout(
+                    playbook_timeout_s,
+                    customer_id=customer_id,
+                    usecase=usecase,
+                    run_id=run_id,
+                    campaign_id=campaign_id,
+                    playbook_id=playbook_id,
+                    instruction=instruction,
+                )
+            )
+            elapsed = time.perf_counter() - campaign_start_time
+            logger.info(
+                "Playbook '%s' completed for Campaign %s in %.2fs",
+                playbook_id,
+                campaign_id,
+                elapsed,
+                extra={"campaign_id": str(campaign_id), "playbook_id": playbook_id, "duration_s": elapsed},
+            )
+            result.succeeded += 1
+        except Exception as e:  # pylint: disable=broad-except
+            elapsed = time.perf_counter() - campaign_start_time
+            logger.exception(
+                "Failed playbook '%s' for Campaign %s after %.2fs: %s",
+                playbook_id,
+                campaign_id,
+                elapsed,
+                e,
+                extra=telemetry.event_fields(
+                    telemetry.EVENT_PLAYBOOK_FAILED,
+                    customer_id=str(customer_id),
+                    usecase=usecase,
+                    run_id=run_id,
+                    campaign_id=str(campaign_id),
+                    playbook_id=playbook_id,
+                    error_class=telemetry.classify_error(e),
+                    duration_s=elapsed,
+                ),
+            )
+            result.failed += 1
+    return result
+
+
+async def _run_campaign_jobs(
+    jobs: List[_CampaignJob],
+    max_concurrency: int,
+    worker: Callable[[_CampaignJob], _CampaignResult],
+    *,
+    customer_id: str,
+    usecase: str,
+    run_id: str,
+) -> List[_CampaignResult]:
+    """Runs campaign jobs on a bounded thread pool.
+
+    A dedicated pool (rather than asyncio.to_thread) is used so the limit is
+    exactly max_concurrency: the default executor is sized from the CPU count.
+    The tools are synchronous (Google Ads, Firestore, weather HTTP), so a
+    thread per campaign is what lets their I/O overlap; ADK alone would run
+    them on one event loop, one at a time.
+
+    Args:
+        jobs: Prepared campaigns.
+        max_concurrency: Maximum campaigns in flight.
+        worker: Processes one job; normally a partial of _process_campaign.
+        customer_id: For failure events.
+        usecase: For failure events.
+        run_id: For failure events.
+
+    Returns:
+        One result per job, in job order. A worker that raised unexpectedly is
+        reported as all of that campaign's playbooks failing.
+    """
+    if not jobs:
+        return []
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max_concurrency, thread_name_prefix="adsta_campaign"
+    ) as pool:
+        outcomes = await asyncio.gather(
+            *(loop.run_in_executor(pool, worker, job) for job in jobs), return_exceptions=True
+        )
+
+    results: List[_CampaignResult] = []
+    for job, outcome in zip(jobs, outcomes):
+        if isinstance(outcome, _CampaignResult):
+            results.append(outcome)
+            continue
+        campaign_id = str(job.campaign.get("campaignId"))
+        logger.error(
+            "Campaign %s worker failed unexpectedly: %s",
+            campaign_id,
+            outcome,
+            exc_info=outcome if isinstance(outcome, BaseException) else None,
+            extra=telemetry.event_fields(
+                telemetry.EVENT_PLAYBOOK_FAILED,
+                customer_id=str(customer_id),
+                usecase=usecase,
+                run_id=run_id,
+                campaign_id=campaign_id,
+                playbook_id="*",
+                error_class=telemetry.classify_error(outcome),
+            ),
+        )
+        results.append(
+            _CampaignResult(campaign_id=campaign_id, eligible=True, failed=len(job.instructions))
+        )
+    return results
+
+
 def _log_run_completed(summary: telemetry.RunSummary) -> None:
     """Emits the single run_completed event for a run.
 
@@ -922,27 +1242,15 @@ async def _execute_run(
     # Per-city values (activation thresholds), read once per city per run.
     city_cache: Dict[str, Dict[str, Any]] = {}
 
-    # 4. Loop and Process Each Campaign
-    successful_campaigns = 0
-    failed_campaigns = 0
-    eligible_campaigns = 0
-    skipped_campaigns = 0
-
+    # 4. Prepare every campaign: Firestore reads and prompt rendering. This is
+    #    cheap and shares the per-run city cache, so it stays sequential.
+    jobs: List[_CampaignJob] = []
     for idx, campaign in enumerate(campaigns, start=1):
         campaign_id = campaign.get("campaignId")
 
         if not campaign_id:
             logger.warning("Skipping campaign %d/%d: missing 'campaignId' field.", idx, len(campaigns))
             continue
-
-        campaign_start_time = time.perf_counter()
-        logger.info(
-            "--- Processing Campaign %d/%d: ID=%s ---",
-            idx,
-            len(campaigns),
-            campaign_id,
-            extra={"campaign_id": str(campaign_id), "campaign_index": idx, "total_campaigns": len(campaigns)},
-        )
 
         hemisphere = ((campaign.get("params") or {}).get("hemisphere")) or "northern"
 
@@ -976,105 +1284,50 @@ async def _execute_run(
             )
             continue
 
-        # Deterministic safety check, enforced in code rather than left to the
-        # model: never act on a campaign whose name does not match the config.
-        mismatch = _campaign_name_mismatch(customer_id, campaign)
-        if mismatch:
-            _report_campaign_skipped(firestore_toolset, customer_id, campaign, run_id, account, mismatch)
-            skipped_campaigns += 1
-            continue
+        jobs.append(
+            _CampaignJob(index=idx, total=len(campaigns), campaign=campaign, instructions=resolved)
+        )
 
-        eligible_campaigns += 1
+    # 5. Execute the campaigns in parallel. Each campaign runs in its own
+    #    worker thread with its own event loop and its own agent per playbook,
+    #    so campaigns stay isolated; a campaign's playbooks still run in order.
+    max_concurrency = _max_concurrent_campaigns()
+    playbook_timeout_s = _playbook_timeout_seconds()
+    logger.info(
+        "Run %s: executing %d campaign(s), up to %d in parallel (playbook timeout %ds)",
+        run_id,
+        len(jobs),
+        max_concurrency,
+        playbook_timeout_s,
+        extra={
+            "run_id": run_id,
+            "customer_id": str(customer_id),
+            "campaigns": len(jobs),
+            "max_concurrency": max_concurrency,
+        },
+    )
+    results = await _run_campaign_jobs(
+        jobs,
+        max_concurrency,
+        functools.partial(
+            _process_campaign,
+            customer_id=customer_id,
+            usecase=summary.usecase,
+            run_id=run_id,
+            account=account,
+            playbook_timeout_s=playbook_timeout_s,
+        ),
+        customer_id=customer_id,
+        usecase=summary.usecase,
+        run_id=run_id,
+    )
 
-        # Each playbook gets its own agent and session. Isolation is per
-        # (campaign, playbook) rather than per campaign so that a campaign
-        # missing its Severe Modifiers params still gets its asset groups
-        # toggled, per section 7 of the spec.
-        for playbook_id, instruction in resolved:
-            try:
-                agent = create_agent(
-                    instruction=instruction,
-                    run_context={
-                        "customer_id": customer_id,
-                        "usecase": summary.usecase,
-                        "run_id": run_id,
-                        "campaign_id": campaign_id,
-                        "playbook_id": playbook_id,
-                    },
-                )
+    successful_campaigns = sum(r.succeeded for r in results)
+    failed_campaigns = sum(r.failed for r in results)
+    eligible_campaigns = sum(1 for r in results if r.eligible)
+    skipped_campaigns = sum(1 for r in results if r.skipped)
 
-                app = apps.App(name="decision_app", root_agent=agent)
-                runner = runners.InMemoryRunner(app=app)
-
-                session_id = str(uuid.uuid4())
-                await runner.session_service.create_session(
-                    session_id=session_id,
-                    user_id=customer_id,
-                    app_name="decision_app"
-                )
-
-                prompt_text = (
-                    f"Proceed with playbook '{playbook_id}' for Campaign {campaign_id} "
-                    "based on your instructions."
-                )
-                content = types.Content(parts=[types.Part(text=prompt_text)])
-
-                logger.info(
-                    "Executing playbook '%s' for Campaign %s (session_id=%s, run_id=%s)",
-                    playbook_id,
-                    campaign_id,
-                    session_id,
-                    run_id,
-                    extra={
-                        "campaign_id": str(campaign_id),
-                        "playbook_id": playbook_id,
-                        "run_id": run_id,
-                    },
-                )
-                async for chunk in runner.run_async(
-                    user_id=customer_id,
-                    session_id=session_id,
-                    new_message=content
-                ):
-                    _log_agent_chunk(chunk, str(campaign_id))
-
-                campaign_elapsed = time.perf_counter() - campaign_start_time
-                logger.info(
-                    "Playbook '%s' completed for Campaign %s in %.2fs",
-                    playbook_id,
-                    campaign_id,
-                    campaign_elapsed,
-                    extra={
-                        "campaign_id": str(campaign_id),
-                        "playbook_id": playbook_id,
-                        "duration_s": campaign_elapsed,
-                    },
-                )
-                successful_campaigns += 1
-
-            except Exception as e:
-                campaign_elapsed = time.perf_counter() - campaign_start_time
-                logger.exception(
-                    "Failed playbook '%s' for Campaign %s after %.2fs: %s",
-                    playbook_id,
-                    campaign_id,
-                    campaign_elapsed,
-                    e,
-                    extra=telemetry.event_fields(
-                        telemetry.EVENT_PLAYBOOK_FAILED,
-                        customer_id=str(customer_id),
-                        usecase=summary.usecase,
-                        run_id=run_id,
-                        campaign_id=str(campaign_id),
-                        playbook_id=playbook_id,
-                        error_class=telemetry.classify_error(e),
-                        duration_s=campaign_elapsed,
-                    ),
-                )
-                failed_campaigns += 1
-                continue
-
-    # 5. Cross-campaign safety net (spec section 5.5).
+    # 6. Cross-campaign safety net (spec section 5.5).
     _check_change_volume_guard(
         firestore_toolset=firestore_toolset,
         run_id=run_id,
