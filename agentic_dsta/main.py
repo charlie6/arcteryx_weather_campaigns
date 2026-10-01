@@ -61,8 +61,25 @@ SESSION_SERVICE_URI = "memory://"
 # Example allowed origins for CORS
 # For production environments, it is recommended to use a more restrictive list of allowed origins.
 ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8080"]
-# Set web=True if you intend to serve a web interface, False otherwise
-SERVE_WEB_INTERFACE = True
+SERVE_WEB_UI_ENV = "ADSTA_SERVE_WEB_UI"
+
+
+def _serve_web_interface() -> bool:
+    """Whether to serve the ADK developer web UI.
+
+    Off by default. Production only needs the scheduler endpoints, and serving
+    the dev UI from Cloud Run both exposes an interactive agent console and
+    logs a 'Permission denied ... runtime-config.json' ERROR on every cold
+    start (the image's site-packages are read-only). Set ADSTA_SERVE_WEB_UI=true
+    in .env to use the UI locally.
+
+    Returns:
+        True if ADSTA_SERVE_WEB_UI is set to a truthy value.
+    """
+    return os.environ.get(SERVE_WEB_UI_ENV, "").strip().lower() in ("1", "true", "yes", "y")
+
+
+SERVE_WEB_INTERFACE = _serve_web_interface()
 
 # Call the function to get the FastAPI app instance
 # Ensure the agent directory name ('decision_agent') matches your agent folder
