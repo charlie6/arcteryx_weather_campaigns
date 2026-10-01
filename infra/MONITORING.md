@@ -32,10 +32,12 @@ Slack, PagerDuty and Google Chat channels can be created in the console and atta
 | `mutation_applied` | Google Ads / SA360 write (or dry-run suppression) | `action`, `dry_run`, `campaign_id`, `tool_args` |
 | `tool_error` | A tool returned an error or raised | `dependency`, `error_class`, `tool`, `mutating` |
 | `model_error` | A Gemini call failed | `error_class` |
-| `change_guard_exceeded` | Budget changes in a run exceeded the cap | `run_id`, `budget_changes`, `cap` |
+| `change_guard_exceeded` | Budget **increases** in a run exceeded the cap (reverts to normal are not counted) | `run_id`, `budget_changes`, `cap` |
+| `campaign_name_mismatch` | A campaign was skipped because its live name doesn't contain `Campaign name contains`, or couldn't be read. Nothing ran for it | `campaign_id`, `reason` (`mismatch`, `not_found`, `lookup_failed`), `expected_name_contains`, `actual_name` |
 | `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `conflicts`, `needs_attention` |
 
-`outcome` is one of `success`, `partial`, `failed`, `aborted`, `noop`.
+`outcome` is one of `success`, `partial`, `failed`, `aborted`, `noop`. A run that skipped
+campaigns with the name guard ends `partial` with `reason="campaigns_skipped"`.
 `error_class` is one of `auth`, `quota`, `timeout`, `unavailable`, `not_found`,
 `invalid_argument`, `other`.
 
@@ -50,7 +52,7 @@ records the attempt as failed. Scheduler retries are disabled, so this never re-
 | Critical | Scheduled run failed | Cloud Scheduler attempt ends in error (5xx, timeout) |
 | Critical | Change volume guard exceeded | `change_guard_exceeded` |
 | Critical | Authentication failure | Any event with `error_class="auth"` (for example, an expired refresh token) |
-| Warning | Run partially failed | `outcome="partial"` or `reason="no_runnable_playbooks"` |
+| Warning | Run partially failed | `outcome="partial"` (including `campaigns_skipped`) or `reason="no_runnable_playbooks"` |
 | Warning | Dependency error spike | More than 10 tool/model errors per hour for one dependency |
 | Warning | Run near timeout | Run longer than 80% of the scheduler attempt deadline |
 | Warning | Config sheet needs attention | `config_sync` with `needs_attention=true`: sheet invalid or unreadable, a budget push failed, or a budget conflict (see [CONFIG_SHEET.md](CONFIG_SHEET.md)) |

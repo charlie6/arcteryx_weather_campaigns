@@ -44,6 +44,7 @@ EVENT_MUTATION_APPLIED = "mutation_applied"
 EVENT_TOOL_ERROR = "tool_error"
 EVENT_MODEL_ERROR = "model_error"
 EVENT_CHANGE_GUARD_EXCEEDED = "change_guard_exceeded"
+EVENT_CAMPAIGN_NAME_MISMATCH = "campaign_name_mismatch"
 
 # --- Run outcomes ---
 OUTCOME_SUCCESS = "success"
@@ -56,6 +57,9 @@ OUTCOME_NOOP = "noop"
 ABORT_MISSING_INSTRUCTIONS = "missing_instructions"
 ABORT_MISSING_CONFIG = "missing_config"
 ABORT_NO_CAMPAIGNS = "no_campaigns"
+
+# --- Partial-run reasons ---
+REASON_CAMPAIGNS_SKIPPED = "campaigns_skipped"
 
 # Advertising platform writes and the action label each one reports. Firestore
 # writes are ADSTA's own state and are deliberately not counted as mutations.
@@ -128,6 +132,7 @@ class RunSummary:
         successful_playbooks: Playbook executions that completed.
         failed_playbooks: Playbook executions that raised.
         eligible_campaigns: Campaigns with at least one runnable playbook.
+        skipped_campaigns: Campaigns skipped by the campaign name guard.
         duration_s: Wall-clock duration of the run in seconds.
     """
 
@@ -139,6 +144,7 @@ class RunSummary:
     successful_playbooks: int = 0
     failed_playbooks: int = 0
     eligible_campaigns: int = 0
+    skipped_campaigns: int = 0
     duration_s: float = 0.0
 
     @property

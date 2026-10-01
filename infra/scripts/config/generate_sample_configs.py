@@ -241,6 +241,8 @@ If the document exists but normalBudgetMicros is missing, make NO change, log no
 'missing normal budget - alert' and stop. Do not guess a value.
 
 STEP 6 - Decide. Evaluate in this order and take the FIRST case that applies.
+TODAY below always means {{todayLocal}}, the account-local date. Every date written to
+increaseStartDate and increasedDays uses it.
   A. increaseActive is true AND LIVE_BUDGET != lastAppliedBudgetMicros
      A person changed the budget by hand and the human decision wins. Adopt the live value:
      normalBudgetMicros = LIVE_BUDGET, increaseActive false, increaseDayNumber 0. Make NO budget
@@ -252,7 +254,11 @@ STEP 6 - Decide. Evaluate in this order and take the FIRST case that applies.
      Event no longer qualifies. Revert exactly as in case B.
   D. increaseActive is true AND SEVERE is true
      Still qualifying and inside the window. The budget is already elevated, so make NO budget
-     call. Set increaseDayNumber = increaseDayNumber + 1 and add TODAY to increasedDays if absent.
+     call. increaseDayNumber counts calendar DAYS, not runs, and there are {{runsPerDay}} runs
+     per day:
+       - If TODAY is already in increasedDays, an earlier run today already counted it. Leave
+         increaseDayNumber and increasedDays unchanged.
+       - Otherwise set increaseDayNumber = increaseDayNumber + 1 and add TODAY to increasedDays.
   E. increaseActive is false AND SEVERE is true
      New event. First check the rolling cap: count the entries in increasedDays falling in the
      trailing {{rollingWindowDays}} days including TODAY. If that count is

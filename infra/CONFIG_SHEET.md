@@ -58,7 +58,7 @@ Columns are matched by their header text, so you can reorder them or add your ow
 | Customer ID, Campaign ID | The customer must have a row in `Accounts`. |
 | Active | `N` takes the campaign out of ADSTA (it is removed from `GoogleAdsConfig`). Blank means Y. |
 | City | Must exactly match a city in the `Cities` tab. |
-| Geo, Campaign name contains | Optional. The name check stops ADSTA from acting if the campaign has been renamed. |
+| Geo, Campaign name contains | Optional. Before running anything for a campaign, ADSTA reads its live name from Google Ads. If the name doesn't contain this text (case-insensitive), or can't be read, the campaign is skipped for that run. Nothing changes, a ChangeLog row is written, and the "Run partially failed" alert fires. Use a distinctive part of the name. |
 | Asset groups / Severe budget | Which playbooks to run. Blank means Y / N. |
 | Normal daily budget | In account currency, for example `25.00`. Blank means the sheet does not manage this budget. See [Budgets](#budgets). |
 | Budget bump % | Required when Severe budget is Y. |

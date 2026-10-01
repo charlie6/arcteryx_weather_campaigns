@@ -402,6 +402,7 @@ resource "google_monitoring_alert_policy" "degraded_run" {
       **Run `$${log.extracted_label.run_id}` did not fully succeed** (outcome: $${log.extracted_label.outcome}).
 
       - partial: [Logs](${local.logs_url}) `jsonPayload.extra.event="playbook_failed" jsonPayload.extra.run_id="$${log.extracted_label.run_id}"`.
+      - partial with reason `campaigns_skipped`: a campaign's live name did not contain its `Campaign name contains` value (or it could not be read), so nothing was done for it. [Logs](${local.logs_url}) `jsonPayload.extra.event="campaign_name_mismatch"`. Fix the Campaigns tab row (name text or campaign ID).
       - noop / no_runnable_playbooks: no campaign resolved to a playbook. Check `assetGroupTokens`, playbook ids and campaign params in Firestore.
 
       ${local.runbook_footer}

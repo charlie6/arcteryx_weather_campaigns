@@ -408,6 +408,176 @@ def _maybe_sync_config_sheet(firestore_toolset: FirestoreToolset, customer_id: s
     config_sync.run_sheet_sync(sheet_id, db, customer_id=customer_id, source="scheduled_run")
 
 
+def _fetch_campaign_name(customer_id: str, campaign_id: Any) -> Optional[str]:
+    """Reads a campaign's live name from Google Ads with one GAQL query.
+
+    Args:
+        customer_id: Google Ads customer ID, digits only.
+        campaign_id: Campaign ID.
+
+    Returns:
+        The campaign name, or None if the campaign does not exist.
+
+    Raises:
+        Exception: If the client is unavailable or the query fails.
+    """
+    # Imported lazily: the Google Ads SDK is heavy and unit tests patch this.
+    from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client  # pylint: disable=import-outside-toplevel
+
+    client = get_google_ads_client(customer_id)
+    if not client:
+        raise RuntimeError("Failed to get Google Ads client.")
+    query = f"SELECT campaign.name FROM campaign WHERE campaign.id = {int(campaign_id)}"
+    service = client.get_service("GoogleAdsService")
+    for batch in service.search_stream(customer_id=customer_id, query=query):
+        for row in batch.results:
+            return row.campaign.name
+    return None
+
+
+def _campaign_name_mismatch(
+    customer_id: str, campaign: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    """Enforces params.campaignNameContains before any playbook runs.
+
+    The playbooks also ask the model to check the name, but end-to-end testing
+    showed the model can skip that check and change the wrong campaign's
+    budget. This check runs in code, so a renamed campaign or a config row
+    pointing at the wrong campaign ID is never acted on. It fails closed: if a
+    name is configured but cannot be read, the campaign is skipped.
+
+    The comparison is case-insensitive and ignores surrounding whitespace.
+
+    Args:
+        customer_id: Google Ads customer ID, digits only.
+        campaign: The campaign config entry.
+
+    Returns:
+        None when the campaign may proceed (no name configured, or the name
+        matches). Otherwise a dict with ``reason`` ('mismatch', 'not_found' or
+        'lookup_failed'), ``expected``, ``actual`` and ``detail``.
+    """
+    expected = str(((campaign.get("params") or {}).get("campaignNameContains")) or "").strip()
+    if not expected:
+        return None
+    campaign_id = campaign.get("campaignId")
+    try:
+        actual = _fetch_campaign_name(customer_id, campaign_id)
+    except Exception as err:  # pylint: disable=broad-except
+        return {
+            "reason": "lookup_failed",
+            "expected": expected,
+            "actual": None,
+            "detail": f"could not read the campaign name: {err}",
+        }
+    if actual is None:
+        return {
+            "reason": "not_found",
+            "expected": expected,
+            "actual": None,
+            "detail": f"campaign {campaign_id} was not found in account {customer_id}",
+        }
+    if expected.casefold() not in actual.casefold():
+        return {
+            "reason": "mismatch",
+            "expected": expected,
+            "actual": actual,
+            "detail": f"campaign name {actual!r} does not contain {expected!r}",
+        }
+    return None
+
+
+def _report_campaign_skipped(
+    firestore_toolset: FirestoreToolset,
+    customer_id: str,
+    campaign: Dict[str, Any],
+    run_id: str,
+    account: str,
+    mismatch: Dict[str, Any],
+) -> None:
+    """Logs, alerts on and audits a campaign skipped by the name guard.
+
+    Args:
+        firestore_toolset: Used to write the ChangeLog row.
+        customer_id: Google Ads customer ID.
+        campaign: The skipped campaign's config entry.
+        run_id: The current run id.
+        account: Account label for the change log.
+        mismatch: The result of _campaign_name_mismatch.
+    """
+    campaign_id = str(campaign.get("campaignId"))
+    params = campaign.get("params") or {}
+    logger.error(
+        "SKIPPING campaign %s: %s. No playbook was run and nothing was changed. Fix the "
+        "'Campaign name contains' column (or the campaign ID) in the config sheet.",
+        campaign_id,
+        mismatch["detail"],
+        extra=telemetry.event_fields(
+            telemetry.EVENT_CAMPAIGN_NAME_MISMATCH,
+            customer_id=str(customer_id),
+            run_id=run_id,
+            campaign_id=campaign_id,
+            reason=mismatch["reason"],
+            expected_name_contains=mismatch["expected"],
+            actual_name=mismatch["actual"],
+        ),
+    )
+    now = datetime.datetime.now(datetime.timezone.utc)
+    try:
+        firestore_toolset.set_document(
+            collection="ChangeLog",
+            document_id=f"{now.strftime('%Y-%m-%d')}_{campaign_id}_skipped_{run_id}",
+            data={
+                "runId": run_id,
+                "timestampUtc": now.isoformat(),
+                "account": account,
+                "customerId": str(customer_id),
+                "campaignId": campaign_id,
+                "campaignName": mismatch["actual"],
+                "weatherLocation": params.get("city"),
+                "condition": "None",
+                "assetGroupAction": "no change",
+                "budgetBeforeMicros": "unchanged",
+                "budgetAfterMicros": "unchanged",
+                "mode": "skipped",
+                "notes": f"campaign skipped by name guard ({mismatch['reason']}): {mismatch['detail']}",
+            },
+            merge=False,
+        )
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Unable to write the skipped-campaign ChangeLog row for %s: %s", campaign_id, err)
+
+
+def _micros(value: Any) -> Optional[int]:
+    """Parses a ChangeLog budget field into micros, or None if not numeric."""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return int(float(str(value).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_budget_increase(row: Dict[str, Any]) -> bool:
+    """True if a ChangeLog row records a budget increase.
+
+    A row whose after-value is numeric but whose before-value is missing or
+    unparseable is counted as an increase, so a malformed row errs towards
+    alerting rather than hiding a change.
+
+    Args:
+        row: ChangeLog document data.
+
+    Returns:
+        Whether the row raised the budget.
+    """
+    after = _micros(row.get("budgetAfterMicros"))
+    if after is None:
+        return False
+    before = _micros(row.get("budgetBeforeMicros"))
+    return before is None or after > before
+
+
 def _check_change_volume_guard(
     firestore_toolset: FirestoreToolset,
     run_id: str,
@@ -426,6 +596,10 @@ def _check_change_volume_guard(
     blocking mid-run. Enforcing the cap properly requires a two-phase run in
     which all campaigns propose decisions and the runner applies a capped
     subset; that is tracked as follow-up work.
+
+    Only budget INCREASES count towards the cap. A bad feed shows up as spend
+    being added; returning budgets to normal when a widespread storm ends is
+    expected and would otherwise raise a CRITICAL alert for no reason.
 
     Args:
         firestore_toolset: Client used to read the 'ChangeLog' collection.
@@ -457,11 +631,11 @@ def _check_change_volume_guard(
     changed = [
         doc
         for doc in result.get("documents", [])
-        if (doc.get("data") or {}).get("budgetAfterMicros") not in (None, "unchanged")
+        if _is_budget_increase(doc.get("data") or {})
     ]
 
     logger.info(
-        "Change volume for run %s: %d budget change(s) across %d eligible campaign(s), cap %d",
+        "Change volume for run %s: %d budget increase(s) across %d eligible campaign(s), cap %d",
         run_id,
         len(changed),
         eligible_campaigns,
@@ -471,7 +645,7 @@ def _check_change_volume_guard(
 
     if len(changed) > cap:
         logger.error(
-            "CHANGE VOLUME GUARD EXCEEDED for run %s: %d budget changes against a cap "
+            "CHANGE VOLUME GUARD EXCEEDED for run %s: %d budget increases against a cap "
             "of %d (%.0f%% of %d eligible campaigns). This may indicate a bad weather "
             "data feed. Review ChangeLog rows for runId=%s.",
             run_id,
@@ -525,6 +699,7 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
             reason=summary.reason or None,
             total_duration_s=summary.duration_s,
             eligible_campaigns=summary.eligible_campaigns,
+            skipped_campaigns=summary.skipped_campaigns,
             # Legacy field names kept so existing saved log queries still work.
             successful_campaigns=summary.successful_playbooks,
             failed_campaigns=summary.failed_playbooks,
@@ -751,6 +926,7 @@ async def _execute_run(
     successful_campaigns = 0
     failed_campaigns = 0
     eligible_campaigns = 0
+    skipped_campaigns = 0
 
     for idx, campaign in enumerate(campaigns, start=1):
         campaign_id = campaign.get("campaignId")
@@ -798,6 +974,14 @@ async def _execute_run(
                 campaign_id,
                 extra={"campaign_id": str(campaign_id)},
             )
+            continue
+
+        # Deterministic safety check, enforced in code rather than left to the
+        # model: never act on a campaign whose name does not match the config.
+        mismatch = _campaign_name_mismatch(customer_id, campaign)
+        if mismatch:
+            _report_campaign_skipped(firestore_toolset, customer_id, campaign, run_id, account, mismatch)
+            skipped_campaigns += 1
             continue
 
         eligible_campaigns += 1
@@ -902,11 +1086,17 @@ async def _execute_run(
     summary.successful_playbooks = successful_campaigns
     summary.failed_playbooks = failed_campaigns
     summary.eligible_campaigns = eligible_campaigns
+    summary.skipped_campaigns = skipped_campaigns
     if failed_campaigns and successful_campaigns:
         summary.outcome = telemetry.OUTCOME_PARTIAL
     elif failed_campaigns:
         summary.outcome = telemetry.OUTCOME_FAILED
         summary.reason = "all_playbooks_failed"
+    elif skipped_campaigns:
+        # Some campaigns were deliberately not acted on (name guard). The run
+        # did what it safely could, but an operator must fix the config.
+        summary.outcome = telemetry.OUTCOME_PARTIAL
+        summary.reason = telemetry.REASON_CAMPAIGNS_SKIPPED
     elif successful_campaigns:
         summary.outcome = telemetry.OUTCOME_SUCCESS
     else:
