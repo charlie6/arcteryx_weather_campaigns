@@ -142,10 +142,10 @@ locals {
           }
         }
       }]
+      # XyChart thresholds cannot set a color (only scorecard thresholds can).
       thresholds = [{
         label      = "warning"
         value      = var.run_duration_warning_seconds
-        color      = "YELLOW"
         direction  = "ABOVE"
         targetAxis = "Y1"
       }]
