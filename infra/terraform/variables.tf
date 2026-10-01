@@ -171,6 +171,7 @@ variable "gcp_apis" {
     "cloudscheduler.googleapis.com",
     "monitoring.googleapis.com",
     "logging.googleapis.com",
+    "sheets.googleapis.com",
   ]
 }
 

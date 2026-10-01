@@ -42,6 +42,14 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 import zoneinfo
 
+from agentic_dsta.core.activation import (  # pylint: disable=unused-import
+    ACTIVATION_LIMITS,
+    ACTIVATION_SOURCE_CITY,
+    ACTIVATION_SOURCE_DEFAULT,
+    ACTIVATION_SOURCE_PARTIAL,
+    normalise_activation_value,
+)
+
 logger = logging.getLogger(__name__)
 
 # Matches {{token}} and {{ token }}, where token may be dotted for nested
@@ -60,6 +68,13 @@ _RESERVED_CONTEXT_KEYS = frozenset({
     "budgetStateDocId",
     "assetGroupStateDocId",
 })
+
+# Params that are owned by the city, not the campaign. Activation thresholds
+# used to be overridable per campaign via params.activation; they now live on
+# ClimateBaselines/{city}.activation so every campaign in a city reacts to the
+# same weather. A leftover params.activation is ignored with a warning rather
+# than silently winning over the city's value.
+_CITY_OWNED_PARAM_KEYS = frozenset({"activation"})
 
 # Northern-hemisphere meteorological seasons. Every market in scope (US,
 # Canada, Europe) is northern; `params.hemisphere` overrides for future markets.
@@ -104,6 +119,55 @@ def season_for_month(month: int, hemisphere: str = "northern") -> str:
         raise ValueError(f"Invalid month: {month!r}. Expected 1 to 12.")
     table = _SOUTHERN_SEASONS if hemisphere == "southern" else _NORTHERN_SEASONS
     return table[month]
+
+
+def city_values_from_baseline(
+    baseline: Optional[Dict[str, Any]], city: Optional[str] = None
+) -> Dict[str, Any]:
+    """Extracts the per-city values a playbook may reference.
+
+    Today that is the asset group activation thresholds stored on
+    ``ClimateBaselines/{city}.activation``. Invalid or missing thresholds are
+    dropped so the playbook default applies to them; the run never stops
+    because a city is only partly configured.
+
+    Args:
+        baseline: The ClimateBaselines document data, or None if missing.
+        city: The city name, used only for log context.
+
+    Returns:
+        A mapping with ``activationSource`` and, when the city sets at least
+        one valid threshold, ``activation``.
+    """
+    raw = (baseline or {}).get("activation")
+    if not isinstance(raw, dict):
+        return {"activationSource": ACTIVATION_SOURCE_DEFAULT}
+
+    activation: Dict[str, Any] = {}
+    for key in ACTIVATION_LIMITS:
+        if key not in raw:
+            continue
+        value = normalise_activation_value(key, raw.get(key))
+        if value is None:
+            logger.warning(
+                "ClimateBaselines/%s.activation.%s=%r is not a valid threshold; "
+                "using the playbook default for it.",
+                city,
+                key,
+                raw.get(key),
+                extra={"city": city},
+            )
+            continue
+        activation[key] = value
+
+    if not activation:
+        return {"activationSource": ACTIVATION_SOURCE_DEFAULT}
+    source = (
+        ACTIVATION_SOURCE_CITY
+        if len(activation) == len(ACTIVATION_LIMITS)
+        else ACTIVATION_SOURCE_PARTIAL
+    )
+    return {"activation": activation, "activationSource": source}
 
 
 def flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
@@ -282,13 +346,15 @@ def render_campaign_playbook(
     campaign: Dict[str, Any],
     context: Dict[str, Any],
     shared_values: Optional[Dict[str, Any]] = None,
+    city_values: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Renders one playbook for one campaign.
 
     Precedence, lowest to highest: playbook ``defaults``, shared values (e.g.
-    the account's asset group tokens and windows), campaign ``params``, runner context.
+    the account's asset group tokens and windows), city values (the city's
+    activation thresholds), campaign ``params``, runner context.
     Context wins outright so a config cannot misreport the campaign it is
-    acting on.
+    acting on. City-owned keys (``activation``) are ignored in ``params``.
 
     Args:
         playbook_id: The playbook's document id, used in error messages.
@@ -296,6 +362,8 @@ def render_campaign_playbook(
         campaign: The campaign config entry supplying ``params``.
         context: Runner-owned values from :func:`build_context`.
         shared_values: Account-wide or global values available to all playbooks.
+        city_values: Values for the campaign's city, from
+            :func:`city_values_from_baseline`.
 
     Returns:
         The rendered instruction text.
@@ -308,7 +376,23 @@ def render_campaign_playbook(
     if not template or not str(template).strip():
         raise PlaybookResolutionError(f"Playbook '{playbook_id}' has no 'template' field.")
 
-    params = campaign.get("params") or {}
+    params = dict(campaign.get("params") or {})
+    ignored = sorted(_CITY_OWNED_PARAM_KEYS.intersection(params))
+    if ignored:
+        logger.warning(
+            "Campaign %s sets params.%s, which is no longer supported: activation "
+            "thresholds are set per city (Cities tab / ClimateBaselines.activation). "
+            "Ignoring the campaign value.",
+            context.get("campaignId"),
+            ", params.".join(ignored),
+            extra={
+                "customer_id": context.get("customerId"),
+                "campaign_id": context.get("campaignId"),
+                "playbook_id": playbook_id,
+            },
+        )
+        for key in ignored:
+            params.pop(key)
     flat_params = flatten_params(params)
 
     required: Iterable[str] = playbook.get("requiredParams") or []
@@ -338,6 +422,7 @@ def render_campaign_playbook(
     values: Dict[str, Any] = {}
     values.update(flatten_params(playbook.get("defaults") or {}))
     values.update(flatten_params(shared_values or {}))
+    values.update(flatten_params(city_values or {}))
     values.update(flat_params)
     values.update(context)
 
@@ -349,6 +434,7 @@ def resolve_campaign_instructions(
     playbook_library: Dict[str, Dict[str, Any]],
     context_builder,
     shared_values: Optional[Dict[str, Any]] = None,
+    city_values: Optional[Dict[str, Any]] = None,
 ) -> List[Tuple[str, str]]:
     """Resolves every playbook for a campaign into runnable instructions.
 
@@ -362,6 +448,7 @@ def resolve_campaign_instructions(
         context_builder: Callable taking a playbook id and returning the
             context mapping for it.
         shared_values: Values available to all playbooks.
+        city_values: Values for the campaign's city (activation thresholds).
 
     Returns:
         A list of (playbook_id, instruction) pairs. Playbooks that cannot be
@@ -406,6 +493,7 @@ def resolve_campaign_instructions(
                 campaign=campaign,
                 context=context_builder(playbook_id),
                 shared_values=shared_values,
+                city_values=city_values,
             )
         except PlaybookResolutionError as err:
             logger.warning(

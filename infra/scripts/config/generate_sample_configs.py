@@ -57,7 +57,9 @@ RUN CONTEXT - already resolved, do not recompute:
 
 STEP 1 - Resolve coordinates.
 Call get_document on collection 'ClimateBaselines', document_id '{{city}}'.
-Read latitude and longitude from that document. Never assume or recall coordinates.
+Read ONLY latitude and longitude from that document. Never assume or recall coordinates.
+The activation thresholds in STEP 3 are this city's own and are already filled in below; do
+not read thresholds from the document and do not replace them with any other number.
 If the document does not exist, or either coordinate is missing, treat this as a weather
 failure and go straight to STEP 6.
 
@@ -69,8 +71,9 @@ If success is false, or hours_received is less than hours_requested, go to STEP 
 STEP 3 - Evaluate every condition INDEPENDENTLY.
 Do NOT stop at the first match. More than one condition can be true at the same time, for
 example Cold and Snow together during a cold snowstorm, and each has its own asset group.
-These are the spec section 3.2 activation rules. Use the named signal exactly; do not
-substitute a different temperature or an average.
+These are the spec section 3.2 activation rules with {{city}}'s thresholds
+(threshold source: {{activationSource}}). Use the named signal exactly; do not substitute a
+different temperature or an average.
   Cold : min_temperature_c < {{activation.coldBelowC}}
          (the LOWEST temperature in the look-ahead)
          asset group name contains '{{assetGroupTokens.Cold}}'
@@ -140,7 +143,7 @@ Call set_document on collection 'ChangeLog', document_id
   campaignName (as returned by the API, never from config), weatherLocation '{{city}}',
   condition, assetGroupName, assetGroupAction ('enabled', 'paused' or 'no change'),
   severityMet false, triggerDetail (the observed value and the threshold),
-  budgetBeforeMicros 'unchanged', budgetAfterMicros 'unchanged',
+  thresholdSource '{{activationSource}}', budgetBeforeMicros 'unchanged', budgetAfterMicros 'unchanged',
   mode ('live' or 'log-only') and notes.
 
 RULES
@@ -326,9 +329,12 @@ SHARED_PLAYBOOKS = [
             "defaults": {
                 "geo": "(unset)",
                 "campaignNameContains": None,
-                # Spec section 3.2 activation rules, the same for every city.
-                # A campaign may override any one of these in
-                # params.activation; the rest keep these values.
+                # FALLBACK ONLY. Activation thresholds are set per city in
+                # ClimateBaselines/{city}.activation (edited in the Cities tab
+                # of the config sheet); the runner fills them in at render
+                # time. These spec section 3.2 values apply to any threshold a
+                # city leaves unset. Campaign-level overrides were removed.
+                "activationSource": "playbook default",
                 "activation": {
                     "coldBelowC": 9.0,
                     # Daylight hours in the look-ahead forecast as clear,
@@ -598,7 +604,11 @@ BASELINES_PATH = "infra/config/baselines/climate_baselines_firestore.json"
 # monthlyRainMmPerWetDay, and during QA the two were understandably confused.
 # The provenance still answers "where did 48.0 come from", so it is nested
 # rather than deleted.
-LIVE_BASELINE_FIELDS = ("latitude", "longitude", "severeThresholds")
+#
+# 'activation' is operator-owned: the config sheet writes it and upload_config.py
+# preserves it on redeploy. It is listed here only so that a value present in
+# the baselines file stays live instead of being demoted to _provenance.
+LIVE_BASELINE_FIELDS = ("latitude", "longitude", "severeThresholds", "activation")
 
 
 def _normalise_baseline(document):

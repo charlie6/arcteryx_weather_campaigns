@@ -29,6 +29,7 @@ from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 
 from agentic_dsta.agents.decision_agent import playbooks as playbooks_lib
+from agentic_dsta.config_sync import sync as config_sync
 from agentic_dsta.core import telemetry
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
@@ -281,7 +282,9 @@ def _account_weather_values(
     so the indirection bought nothing, and the document mixed three unrelated
     things: the account's asset group naming (tokens), account policy (the
     windows) and spec rules (the activation tests). Tokens and windows now sit
-    on the account document; the activation thresholds are playbook defaults.
+    on the account document; the activation thresholds are set per city on
+    ClimateBaselines/{city}.activation (see _city_values), with the playbook
+    defaults as the fallback.
 
     Args:
         ads_config: The GoogleAdsConfig document data.
@@ -328,6 +331,81 @@ def _account_weather_values(
             extra={"customer_id": str(customer_id)},
         )
     return values
+
+
+def _city_values(
+    firestore_toolset: FirestoreToolset,
+    city: Optional[str],
+    cache: Dict[str, Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Loads the per-city values (activation thresholds) for a campaign's city.
+
+    The runner reads these, rather than leaving the model to look them up, so
+    the thresholds in the prompt are exact numbers from Firestore. Any failure
+    falls back to the playbook defaults: asset group toggling must keep running
+    even if a city is unconfigured or the read fails.
+
+    Args:
+        firestore_toolset: Client used to read 'ClimateBaselines'.
+        city: The campaign's params.city, or None.
+        cache: Per-run cache keyed by city, so each city is read once.
+
+    Returns:
+        Values for playbooks.render_campaign_playbook's city_values layer.
+    """
+    if not city:
+        return {}
+    if city in cache:
+        return cache[city]
+
+    baseline: Optional[Dict[str, Any]] = None
+    try:
+        doc = firestore_toolset.get_document(collection="ClimateBaselines", document_id=str(city))
+        if doc and doc.get("exists"):
+            baseline = doc.get("data") or {}
+        else:
+            logger.warning(
+                "No ClimateBaselines document for city %r; activation thresholds fall back "
+                "to the playbook defaults.",
+                city,
+                extra={"city": city},
+            )
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Error reading ClimateBaselines/%s: %s", city, err)
+
+    values = playbooks_lib.city_values_from_baseline(baseline, city)
+    logger.info(
+        "City %s activation thresholds: %s (source: %s)",
+        city,
+        values.get("activation") or "(playbook defaults)",
+        values.get("activationSource"),
+        extra={"city": city, "activation_source": values.get("activationSource")},
+    )
+    cache[city] = values
+    return values
+
+
+def _maybe_sync_config_sheet(firestore_toolset: FirestoreToolset, customer_id: str) -> None:
+    """Syncs the configuration sheet into Firestore before a run, if configured.
+
+    Controlled by the CONFIG_SHEET_ID environment variable. A failed or invalid
+    sync never stops the run: Firestore keeps the last good configuration and
+    the config_sync event (needs_attention=true) raises an alert.
+
+    Args:
+        firestore_toolset: Supplies the Firestore client.
+        customer_id: The account being run; only its rows are synced (cities
+            are shared and always synced).
+    """
+    sheet_id = os.environ.get(config_sync.CONFIG_SHEET_ID_ENV, "").strip()
+    if not sheet_id:
+        return
+    try:
+        db = firestore_toolset._get_client()  # pylint: disable=protected-access
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Config sheet sync skipped: no Firestore client: %s", err)
+        return
+    config_sync.run_sheet_sync(sheet_id, db, customer_id=customer_id, source="scheduled_run")
 
 
 def _check_change_volume_guard(
@@ -531,8 +609,13 @@ async def _execute_run(
         summary: Updated in place with the run's id, counters and outcome.
     """
 
-    # 1. Fetch Global Instructions
     firestore_toolset = FirestoreToolset()
+
+    # 0. Pull operator edits from the configuration sheet, if one is configured.
+    if (usecase or "GoogleAds") == "GoogleAds":
+        _maybe_sync_config_sheet(firestore_toolset, customer_id)
+
+    # 1. Fetch Global Instructions
     logger.info(
         "Fetching global instructions from Firestore: collection=CustomerInstructions, doc_id=%s",
         customer_id,
@@ -661,6 +744,9 @@ async def _execute_run(
         extra={"run_id": run_id, "customer_id": str(customer_id)},
     )
 
+    # Per-city values (activation thresholds), read once per city per run.
+    city_cache: Dict[str, Dict[str, Any]] = {}
+
     # 4. Loop and Process Each Campaign
     successful_campaigns = 0
     failed_campaigns = 0
@@ -701,6 +787,9 @@ async def _execute_run(
             playbook_library=playbook_library,
             context_builder=_context_for,
             shared_values=shared_values,
+            city_values=_city_values(
+                firestore_toolset, (campaign.get("params") or {}).get("city"), city_cache
+            ),
         )
 
         if not resolved:

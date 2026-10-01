@@ -380,7 +380,7 @@ class TestSampleConfigRenders:
             assert "ARC_Performance" not in template, f"{playbook_id} hardcodes a campaign name"
             assert "ARC_Weather" not in template, f"{playbook_id} hardcodes an asset group name"
 
-    def _render_asset_groups(self, campaign_params):
+    def _render_asset_groups(self, campaign_params, city_values=None):
         library, ads_config = self._load()
         return playbooks.render_campaign_playbook(
             playbook_id="weather_asset_groups",
@@ -395,6 +395,7 @@ class TestSampleConfigRenders:
                 timezone_name="America/Toronto",
             ),
             shared_values=self._shared_values(ads_config),
+            city_values=city_values,
         )
 
     def test_activation_rules_name_the_exact_signal_and_default_threshold(self):
@@ -407,22 +408,43 @@ class TestSampleConfigRenders:
         assert "max_temperature_c" not in rendered
         assert "max_rain_rate_mm_per_h >= 0.2" in rendered
         assert "'_COLD_'" in rendered and "'_SUN_'" in rendered
+        assert "threshold source: playbook default" in rendered
 
-    def test_a_campaign_can_override_one_activation_threshold(self):
-        rendered = self._render_asset_groups(
-            {"city": "Chicago IL", "activation": {"coldBelowC": 0.0}}
+    def test_city_thresholds_replace_the_playbook_defaults(self):
+        city_values = playbooks.city_values_from_baseline(
+            {"activation": {"coldBelowC": 2, "rainRateMmPerH": 0.5, "sunnyMinHours": 5.0}},
+            "Chicago IL",
         )
+        rendered = self._render_asset_groups({"city": "Chicago IL"}, city_values)
+        assert "min_temperature_c < 2.0" in rendered
+        assert "max_rain_rate_mm_per_h >= 0.5" in rendered
+        assert "sunny_daytime_hours >= 5" in rendered
+        assert "threshold source: city)" in rendered
+        assert "thresholdSource 'city'" in rendered
+
+    def test_a_partly_configured_city_keeps_defaults_for_the_rest(self):
+        city_values = playbooks.city_values_from_baseline(
+            {"activation": {"coldBelowC": 0.0}}, "Chicago IL"
+        )
+        rendered = self._render_asset_groups({"city": "Chicago IL"}, city_values)
         assert "min_temperature_c < 0.0" in rendered
-        # The other thresholds keep the playbook defaults.
         assert "sunny_daytime_hours >= 3" in rendered
         assert "max_rain_rate_mm_per_h >= 0.2" in rendered
+        assert playbooks.ACTIVATION_SOURCE_PARTIAL in rendered
 
-    def test_a_campaign_can_override_the_sunny_hours(self):
-        rendered = self._render_asset_groups(
-            {"city": "Vancouver BC", "activation": {"sunnyMinHours": 6}}
+    def test_campaign_activation_overrides_are_ignored(self):
+        # Thresholds are per city now; a leftover campaign value must not win.
+        city_values = playbooks.city_values_from_baseline(
+            {"activation": {"coldBelowC": 4.0}}, "Vancouver BC"
         )
-        assert "sunny_daytime_hours >= 6" in rendered
-        assert "min_temperature_c < 9.0" in rendered
+        rendered = self._render_asset_groups(
+            {"city": "Vancouver BC", "activation": {"coldBelowC": -20.0, "sunnyMinHours": 9}},
+            city_values,
+        )
+        assert "min_temperature_c < 4.0" in rendered
+        assert "sunny_daytime_hours >= 3" in rendered
+        assert "-20.0" not in rendered
+
 
     def test_missing_tokens_make_the_asset_group_playbook_unrenderable(self):
         # Matching asset groups on a guessed token is worse than skipping.
@@ -482,3 +504,27 @@ class TestAccountWeatherValues:
     def test_a_stale_weather_conditions_id_is_flagged(self, caplog):
         self._fn()({"weatherConditionsId": "sandbox", "assetGroupTokens": {"a": "b"}}, "1")
         assert "no longer read" in caplog.text
+
+
+class TestCityValuesFromBaseline:
+    def test_missing_document_uses_defaults(self):
+        assert playbooks.city_values_from_baseline(None) == {
+            "activationSource": playbooks.ACTIVATION_SOURCE_DEFAULT
+        }
+
+    def test_document_without_activation_uses_defaults(self):
+        values = playbooks.city_values_from_baseline({"latitude": 1.0})
+        assert "activation" not in values
+
+    def test_invalid_values_are_dropped(self):
+        values = playbooks.city_values_from_baseline(
+            {"activation": {"coldBelowC": "cold", "rainRateMmPerH": 500, "sunnyMinHours": True}}
+        )
+        assert values == {"activationSource": playbooks.ACTIVATION_SOURCE_DEFAULT}
+
+    def test_whole_sunny_hours_render_as_an_integer(self):
+        values = playbooks.city_values_from_baseline(
+            {"activation": {"coldBelowC": 9, "rainRateMmPerH": 0.2, "sunnyMinHours": 4.0}}
+        )
+        assert values["activation"] == {"coldBelowC": 9.0, "rainRateMmPerH": 0.2, "sunnyMinHours": 4}
+        assert values["activationSource"] == playbooks.ACTIVATION_SOURCE_CITY

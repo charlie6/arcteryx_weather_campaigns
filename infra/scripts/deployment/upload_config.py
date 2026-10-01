@@ -23,7 +23,9 @@ A seed file is either a single JSON document (uploaded to --collection_name /
 Batch uploads are safe by default so that a redeploy never wipes live edits:
 
 * Collections in OVERWRITE_COLLECTIONS (Playbooks, ClimateBaselines) are owned
-  by the code release and are always replaced.
+  by the code release and are always replaced, except for the operator-owned
+  fields in PRESERVED_FIELDS (ClimateBaselines.activation, set from the config
+  sheet), which keep their live value.
 * Every other document (GoogleAdsConfig, CustomerInstructions, run state such
   as CampaignBudgetState and AssetGroupState, and any unknown collection) is
   created only if it does not exist yet. Existing documents are left untouched.
@@ -51,6 +53,11 @@ logger = logging.getLogger(__name__)
 
 # Collections whose content ships with the code and must track each release.
 OVERWRITE_COLLECTIONS = frozenset({"Playbooks", "ClimateBaselines"})
+
+# Operator-owned fields inside code-owned collections. A release replaces the
+# rest of the document but keeps these, so a redeploy cannot reset thresholds
+# an operator tuned in the config sheet. --overwrite_all still resets them.
+PRESERVED_FIELDS = {"ClimateBaselines": ("activation",)}
 
 # Outcomes returned by upload_document.
 WRITTEN = "written"
@@ -86,6 +93,7 @@ def upload_document(
     document_id: str,
     data: dict,
     overwrite: bool,
+    preserve_fields: Iterable[str] = (),
 ) -> str:
   """Writes one document, either replacing it or creating it only if missing.
 
@@ -96,12 +104,27 @@ def upload_document(
     data: Document body.
     overwrite: True replaces the whole document. False creates it only if it
       does not exist (atomic, via DocumentReference.create).
+    preserve_fields: When replacing, top-level fields whose current value is
+      kept instead of the seed's.
 
   Returns:
     WRITTEN, CREATED or SKIPPED.
   """
   doc_ref = db.collection(collection_name).document(str(document_id))
   if overwrite:
+    preserve_fields = tuple(preserve_fields)
+    if preserve_fields:
+      snapshot = doc_ref.get()
+      current = (snapshot.to_dict() or {}) if snapshot.exists else {}
+      kept = {f: current[f] for f in preserve_fields if f in current}
+      if kept:
+        data = {**data, **kept}
+        logger.info(
+            "Kept operator-owned field(s) %s on %s/%s",
+            ", ".join(sorted(kept)),
+            collection_name,
+            document_id,
+        )
     doc_ref.set(data)
     logger.info("Overwrote %s/%s", collection_name, document_id)
     return WRITTEN
@@ -180,6 +203,7 @@ def upload_batch(
         doc_id,
         data,
         overwrite=should_overwrite(collection, overwrite_all),
+        preserve_fields=() if overwrite_all else PRESERVED_FIELDS.get(collection, ()),
     )
     counts[outcome] += 1
   logger.info(

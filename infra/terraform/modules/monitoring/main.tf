@@ -492,3 +492,51 @@ resource "google_monitoring_alert_policy" "slow_run" {
     EOT
   }
 }
+
+# 8. Config sheet sync needs attention: the sheet is invalid or unreachable, a
+#    budget push failed, or a budget was changed outside the sheet (conflict).
+#    Runs continue on the last good Firestore configuration either way.
+resource "google_monitoring_alert_policy" "config_sync" {
+  project      = var.project_id
+  display_name = "${var.resource_prefix} - WARNING - Config sheet needs attention"
+  combiner     = "OR"
+  severity     = "WARNING"
+  conditions {
+    display_name = "config_sync with needs_attention=true"
+    condition_matched_log {
+      filter = <<-EOT
+        ${local.app_log_filter}
+        jsonPayload.extra.event="config_sync"
+        jsonPayload.extra.needs_attention="true"
+      EOT
+      label_extractors = {
+        outcome   = "EXTRACT(jsonPayload.extra.outcome)"
+        conflicts = "EXTRACT(jsonPayload.extra.conflicts)"
+      }
+    }
+  }
+  alert_strategy {
+    notification_rate_limit {
+      period = var.log_alert_rate_limit
+    }
+    auto_close = var.auto_close
+  }
+  notification_channels = local.channels
+  user_labels           = local.common_labels
+  documentation {
+    mime_type = "text/markdown"
+    content   = <<-EOT
+      **The configuration sheet was not fully applied** (outcome: $${log.extracted_label.outcome}, budget conflicts: $${log.extracted_label.conflicts}). Runs continue on the last good configuration in Firestore.
+
+      The sheet's `SyncLog` tab and the log line itself list every problem with its tab, row and column.
+      - invalid: fix the rows named in the log. Nothing was written, not even the valid rows.
+      - error: the sheet could not be read. Check it is shared with the Cloud Run service account and that `CONFIG_SHEET_ID` is correct.
+      - conflicts: a budget was changed outside the sheet (by hand in Google Ads, or adopted by ADSTA). Set the sheet to the live value to accept it, or enter a new value to override it.
+      - partial: a budget push to Google Ads failed. The next run retries it.
+
+      Preview a fix with `infra/scripts/config/sync_config_sheet.py plan`.
+
+      ${local.runbook_footer}
+    EOT
+  }
+}

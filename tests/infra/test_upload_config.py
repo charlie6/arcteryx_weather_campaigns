@@ -39,10 +39,24 @@ class _FakeDoc:
   def set(self, data: Any) -> None:
     self._store[self._key] = data
 
+  def get(self) -> "_FakeSnapshot":
+    return _FakeSnapshot(self._store.get(self._key))
+
   def create(self, data: Any) -> None:
     if self._key in self._store:
       raise gexc.AlreadyExists("exists")
     self._store[self._key] = data
+
+
+class _FakeSnapshot:
+  """Minimal DocumentSnapshot."""
+
+  def __init__(self, data: Any):
+    self._data = data
+    self.exists = data is not None
+
+  def to_dict(self) -> Any:
+    return self._data
 
 
 class _FakeCollection:
@@ -156,3 +170,37 @@ def test_main_passes_overwrite_flag(tmp_path, monkeypatch, live_db):
 
   assert upload_config.main(base + ["--overwrite_all"]) == 0
   assert live_db.store[("GoogleAdsConfig", "123")] == {"v": "seed"}
+
+
+_ACTIVATION = {"coldBelowC": 4.0, "rainRateMmPerH": 0.5, "sunnyMinHours": 5}
+
+
+def test_redeploy_keeps_operator_activation_thresholds(live_db):
+  live_db.store[("ClimateBaselines", "Vancouver BC")] = {
+      "v": "old", "activation": _ACTIVATION}
+  upload_config.upload_batch(live_db, _SEED)
+  # Code-owned fields are refreshed; the sheet-managed field survives.
+  assert live_db.store[("ClimateBaselines", "Vancouver BC")] == {
+      "v": "new", "activation": _ACTIVATION}
+
+
+def test_live_activation_wins_over_a_seeded_value(live_db):
+  live_db.store[("ClimateBaselines", "Vancouver BC")] = {"activation": _ACTIVATION}
+  seed = [{"collection_name": "ClimateBaselines", "document_id": "Vancouver BC",
+           "data": {"v": "new", "activation": {"coldBelowC": 9.0}}}]
+  upload_config.upload_batch(live_db, seed)
+  assert live_db.store[("ClimateBaselines", "Vancouver BC")]["activation"] == _ACTIVATION
+
+
+def test_overwrite_all_resets_activation_thresholds(live_db):
+  live_db.store[("ClimateBaselines", "Vancouver BC")] = {
+      "v": "old", "activation": _ACTIVATION}
+  upload_config.upload_batch(live_db, _SEED, overwrite_all=True)
+  assert live_db.store[("ClimateBaselines", "Vancouver BC")] == {"v": "new"}
+
+
+def test_playbooks_preserve_nothing(live_db):
+  live_db.store[("Playbooks", "weather_asset_groups")] = {
+      "v": "old", "activation": _ACTIVATION}
+  upload_config.upload_batch(live_db, _SEED)
+  assert live_db.store[("Playbooks", "weather_asset_groups")] == {"v": "new"}

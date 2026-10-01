@@ -33,6 +33,7 @@ Slack, PagerDuty and Google Chat channels can be created in the console and atta
 | `tool_error` | A tool returned an error or raised | `dependency`, `error_class`, `tool`, `mutating` |
 | `model_error` | A Gemini call failed | `error_class` |
 | `change_guard_exceeded` | Budget changes in a run exceeded the cap | `run_id`, `budget_changes`, `cap` |
+| `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `conflicts`, `needs_attention` |
 
 `outcome` is one of `success`, `partial`, `failed`, `aborted`, `noop`.
 `error_class` is one of `auth`, `quota`, `timeout`, `unavailable`, `not_found`,
@@ -52,6 +53,7 @@ records the attempt as failed. Scheduler retries are disabled, so this never re-
 | Warning | Run partially failed | `outcome="partial"` or `reason="no_runnable_playbooks"` |
 | Warning | Dependency error spike | More than 10 tool/model errors per hour for one dependency |
 | Warning | Run near timeout | Run longer than 80% of the scheduler attempt deadline |
+| Warning | Config sheet needs attention | `config_sync` with `needs_attention=true`: sheet invalid or unreadable, a budget push failed, or a budget conflict (see [CONFIG_SHEET.md](CONFIG_SHEET.md)) |
 
 Each alert includes a runbook in its notification. The missed-run alert fires after a fresh
 deploy until the first scheduled run completes.

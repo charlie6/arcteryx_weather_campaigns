@@ -28,6 +28,7 @@ output "alert_policy_ids" {
       google_monitoring_alert_policy.degraded_run.id,
       google_monitoring_alert_policy.dependency_errors.id,
       google_monitoring_alert_policy.slow_run.id,
+      google_monitoring_alert_policy.config_sync.id,
     ],
   )
 }
