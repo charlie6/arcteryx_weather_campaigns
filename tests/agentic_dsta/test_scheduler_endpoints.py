@@ -80,3 +80,33 @@ def test_scheduler_init_and_run_session_failure():
     asyncio.run(run_test())
 
 
+def _post_with_summary(summary):
+    """Posts a scheduler request with run_decision_agent returning `summary`."""
+    payload = {"app_name": "decision_agent", "customer_id": "534-111-4500", "usecase": "GoogleAds"}
+    with patch("agentic_dsta.main.run_decision_agent", new_callable=AsyncMock) as mock_run_agent:
+        mock_run_agent.return_value = summary
+        return client.post("/scheduler/init_and_run", json=payload)
+
+
+def test_scheduler_failed_run_returns_500():
+    from agentic_dsta.core import telemetry
+
+    summary = telemetry.RunSummary(
+        customer_id="5341114500", usecase="GoogleAds",
+        outcome=telemetry.OUTCOME_ABORTED, reason=telemetry.ABORT_MISSING_CONFIG,
+    )
+    response = _post_with_summary(summary)
+    assert response.status_code == 500
+    assert "missing_config" in response.json()["detail"]
+
+
+def test_scheduler_partial_run_returns_200_partial():
+    from agentic_dsta.core import telemetry
+
+    summary = telemetry.RunSummary(
+        customer_id="5341114500", usecase="GoogleAds", outcome=telemetry.OUTCOME_PARTIAL,
+        successful_playbooks=1, failed_playbooks=1,
+    )
+    response = _post_with_summary(summary)
+    assert response.status_code == 200
+    assert response.json()["status"] == "partial"

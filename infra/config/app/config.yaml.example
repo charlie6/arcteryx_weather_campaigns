@@ -7,6 +7,20 @@ resource_prefix: "YOUR_RESOURCE_PREFIX"
 allow_unauthenticated: true
 log_level: "INFO"
 
+# Monitoring (alerts + "ADSTA Operations" dashboard).
+# Every alert emails these addresses. Leave empty to see alerts only in the
+# Cloud Monitoring console. Slack/PagerDuty/Chat channels created in the console
+# can be attached with alert_additional_notification_channel_ids.
+enable_monitoring: true
+alert_notification_emails: []
+#  - "adsta-oncall@example.com"
+# How long without a completed run before the missed-run alert fires. Keep a
+# little above the gap between the scheduler runs below. The SA360 entry is
+# ignored while enable_sa360 is false.
+monitoring_heartbeat_windows:
+  GoogleAds: "13h"
+  SA360: "25h"
+
 # Firestore Configuration
 firestore_database_type: "FIRESTORE_NATIVE"
 
@@ -42,6 +56,9 @@ google_ads_force_user_creds: "true"
 # to fall back to the target customer ID. Dashes are stripped automatically.
 google_ads_login_customer_id: "YOUR_MCC_CUSTOMER_ID"
 
+# SA360 is optional. With enable_sa360 false no SA360 scheduler job is created,
+# so sa360_customer_id is unused.
+enable_sa360: false
 #SA360 Customer ID to be triggered from cloud scheduler
 sa360_customer_id: "SA360_CUSTOMER_ID"
 

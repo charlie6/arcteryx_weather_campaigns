@@ -29,6 +29,7 @@ from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 
 from agentic_dsta.agents.decision_agent import playbooks as playbooks_lib
+from agentic_dsta.core import telemetry
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
 from agentic_dsta.tools.google_ads.google_ads_getter import GoogleAdsGetterToolset
@@ -91,13 +92,19 @@ class DateTimeToolset(BaseToolset):
         return [FunctionTool(func=get_current_datetime)]
 
 
-def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgent:
+def create_agent(
+    instruction: str,
+    model: str = DEFAULT_MODEL,
+    run_context: Optional[Dict[str, Any]] = None,
+) -> agents.LlmAgent:
     """
     Creates a new instance of the decision agent with specific instructions.
 
     Args:
         instruction: The system instruction for this agent instance.
         model: The Gemini model to use.
+        run_context: Labels (customer_id, usecase, run_id, campaign_id,
+            playbook_id) attached to the monitoring events this agent emits.
 
     Returns:
         A configured LlmAgent instance.
@@ -130,6 +137,9 @@ def create_agent(instruction: str, model: str = DEFAULT_MODEL) -> agents.LlmAgen
         instruction=instruction,
         model=configured_model,
         tools=tools,
+        # Observe-only hooks: emit mutation_applied / tool_error / model_error
+        # events for Cloud Monitoring. They never alter tool results.
+        **telemetry.make_agent_callbacks(run_context),
     )
 
 
@@ -392,11 +402,61 @@ def _check_change_volume_guard(
             float(fraction) * 100,
             eligible_campaigns,
             run_id,
-            extra={"run_id": run_id, "budget_changes": len(changed), "cap": cap},
+            extra=telemetry.event_fields(
+                telemetry.EVENT_CHANGE_GUARD_EXCEEDED,
+                run_id=run_id,
+                budget_changes=len(changed),
+                cap=cap,
+                eligible_campaigns=eligible_campaigns,
+            ),
         )
 
 
-async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleAds") -> None:
+def _log_run_completed(summary: telemetry.RunSummary) -> None:
+    """Emits the single run_completed event for a run.
+
+    Every run ends with exactly one of these, whatever the outcome. It is the
+    heartbeat the missed-run alert watches and the source of the run outcome
+    and duration metrics, so it must be emitted even when the run raised.
+
+    Args:
+        summary: The finished run's summary.
+    """
+    level = {
+        telemetry.OUTCOME_FAILED: logging.ERROR,
+        telemetry.OUTCOME_ABORTED: logging.ERROR,
+        telemetry.OUTCOME_PARTIAL: logging.WARNING,
+    }.get(summary.outcome, logging.INFO)
+    logger.log(
+        level,
+        "=== Completed Decision Agent Run %s for Customer %s in %.2fs "
+        "(outcome: %s%s, success: %d, failed: %d) ===",
+        summary.run_id or "(none)",
+        summary.customer_id,
+        summary.duration_s,
+        summary.outcome,
+        f", reason: {summary.reason}" if summary.reason else "",
+        summary.successful_playbooks,
+        summary.failed_playbooks,
+        extra=telemetry.event_fields(
+            telemetry.EVENT_RUN_COMPLETED,
+            customer_id=summary.customer_id,
+            usecase=summary.usecase,
+            run_id=summary.run_id or None,
+            outcome=summary.outcome,
+            reason=summary.reason or None,
+            total_duration_s=summary.duration_s,
+            eligible_campaigns=summary.eligible_campaigns,
+            # Legacy field names kept so existing saved log queries still work.
+            successful_campaigns=summary.successful_playbooks,
+            failed_campaigns=summary.failed_playbooks,
+        ),
+    )
+
+
+async def run_decision_agent(
+    customer_id: str, usecase: Optional[str] = "GoogleAds"
+) -> telemetry.RunSummary:
     """
     Main entry point for the Decision Agent.
     Controller Logic:
@@ -409,6 +469,14 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             ("5341114500") or hyphenated ("534-111-4500"); it is normalised to
             the bare form before use.
         usecase: Target platform ('GoogleAds' or 'SA360').
+
+    Returns:
+        A RunSummary describing the outcome. The caller uses it to report
+        failures honestly instead of always answering "success".
+
+    Raises:
+        Exception: Anything unexpected from the run is re-raised after the
+            run_completed event (outcome 'failed') has been emitted.
     """
     total_start_time = time.perf_counter()
 
@@ -428,12 +496,40 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             extra={"customer_id": str(customer_id)},
         )
 
+    summary = telemetry.RunSummary(customer_id=str(customer_id), usecase=usecase or "GoogleAds")
     logger.info(
         "=== Starting Decision Agent Run: customer_id=%s, usecase=%s ===",
         customer_id,
-        usecase or "GoogleAds",
-        extra={"customer_id": str(customer_id), "usecase": str(usecase)},
+        summary.usecase,
+        extra=telemetry.event_fields(
+            telemetry.EVENT_RUN_STARTED,
+            customer_id=summary.customer_id,
+            usecase=summary.usecase,
+        ),
     )
+
+    try:
+        await _execute_run(customer_id, usecase, summary)
+    except Exception:
+        summary.outcome = telemetry.OUTCOME_FAILED
+        summary.reason = "unhandled_exception"
+        raise
+    finally:
+        summary.duration_s = time.perf_counter() - total_start_time
+        _log_run_completed(summary)
+    return summary
+
+
+async def _execute_run(
+    customer_id: str, usecase: Optional[str], summary: telemetry.RunSummary
+) -> None:
+    """Runs the decision agent for one account, filling in ``summary``.
+
+    Args:
+        customer_id: The normalised customer ID.
+        usecase: Target platform ('GoogleAds' or 'SA360'), or None.
+        summary: Updated in place with the run's id, counters and outcome.
+    """
 
     # 1. Fetch Global Instructions
     firestore_toolset = FirestoreToolset()
@@ -465,6 +561,8 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             "No global instructions found for customer_id=%s in Firestore 'CustomerInstructions'. Aborting run.",
             customer_id,
         )
+        summary.outcome = telemetry.OUTCOME_ABORTED
+        summary.reason = telemetry.ABORT_MISSING_INSTRUCTIONS
         return
 
     # 2. Fetch Campaign Config
@@ -474,18 +572,27 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         collection,
         customer_id,
     )
+    config_found = False
     try:
         doc = firestore_toolset.get_document(collection=collection, document_id=customer_id)
-        if not doc:
+        # get_document returns a truthy {"exists": False, ...} dict for a
+        # missing document or a read error, so check the flag explicitly.
+        if not doc or doc.get("exists") is False:
             logger.warning("No document found in Firestore collection '%s' for customer_id: %s", collection, customer_id)
             ads_config = {}
         else:
-            ads_config = doc.get("data", {})
+            ads_config = doc.get("data", {}) or {}
+            config_found = True
     except Exception as e:
         logger.exception("Error fetching %s for customer_id=%s: %s", collection, customer_id, e)
         ads_config = {}
 
     campaigns = ads_config.get("campaigns", [])
+
+    if not config_found:
+        summary.outcome = telemetry.OUTCOME_ABORTED
+        summary.reason = telemetry.ABORT_MISSING_CONFIG
+        return
 
     if not campaigns:
         logger.info(
@@ -493,6 +600,8 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
             collection,
             customer_id,
         )
+        summary.outcome = telemetry.OUTCOME_NOOP
+        summary.reason = telemetry.ABORT_NO_CAMPAIGNS
         return
 
     logger.info(
@@ -522,6 +631,7 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
     schedule = ads_config.get("schedule", {}) or {}
     account_timezone = schedule.get("timezone")
     run_id = f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}_{uuid.uuid4().hex[:8]}"
+    summary.run_id = run_id
 
     # Values every playbook may reference, regardless of city.
     shared_values: Dict[str, Any] = {
@@ -609,7 +719,16 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         # toggled, per section 7 of the spec.
         for playbook_id, instruction in resolved:
             try:
-                agent = create_agent(instruction=instruction)
+                agent = create_agent(
+                    instruction=instruction,
+                    run_context={
+                        "customer_id": customer_id,
+                        "usecase": summary.usecase,
+                        "run_id": run_id,
+                        "campaign_id": campaign_id,
+                        "playbook_id": playbook_id,
+                    },
+                )
 
                 app = apps.App(name="decision_app", root_agent=agent)
                 runner = runners.InMemoryRunner(app=app)
@@ -668,11 +787,16 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
                     campaign_id,
                     campaign_elapsed,
                     e,
-                    extra={
-                        "campaign_id": str(campaign_id),
-                        "playbook_id": playbook_id,
-                        "duration_s": campaign_elapsed,
-                    },
+                    extra=telemetry.event_fields(
+                        telemetry.EVENT_PLAYBOOK_FAILED,
+                        customer_id=str(customer_id),
+                        usecase=summary.usecase,
+                        run_id=run_id,
+                        campaign_id=str(campaign_id),
+                        playbook_id=playbook_id,
+                        error_class=telemetry.classify_error(e),
+                        duration_s=campaign_elapsed,
+                    ),
                 )
                 failed_campaigns += 1
                 continue
@@ -685,22 +809,22 @@ async def run_decision_agent(customer_id: str, usecase: Optional[str] = "GoogleA
         eligible_campaigns=eligible_campaigns,
     )
 
-    total_elapsed = time.perf_counter() - total_start_time
-    logger.info(
-        "=== Completed Decision Agent Run %s for Customer %s in %.2fs (success: %d, failed: %d) ===",
-        run_id,
-        customer_id,
-        total_elapsed,
-        successful_campaigns,
-        failed_campaigns,
-        extra={
-            "customer_id": str(customer_id),
-            "run_id": run_id,
-            "total_duration_s": total_elapsed,
-            "successful_campaigns": successful_campaigns,
-            "failed_campaigns": failed_campaigns,
-        },
-    )
+    # The run_completed event itself is emitted by run_decision_agent.
+    summary.successful_playbooks = successful_campaigns
+    summary.failed_playbooks = failed_campaigns
+    summary.eligible_campaigns = eligible_campaigns
+    if failed_campaigns and successful_campaigns:
+        summary.outcome = telemetry.OUTCOME_PARTIAL
+    elif failed_campaigns:
+        summary.outcome = telemetry.OUTCOME_FAILED
+        summary.reason = "all_playbooks_failed"
+    elif successful_campaigns:
+        summary.outcome = telemetry.OUTCOME_SUCCESS
+    else:
+        # Campaigns exist but none resolved to a runnable playbook, which is
+        # almost always a config problem (e.g. missing assetGroupTokens).
+        summary.outcome = telemetry.OUTCOME_NOOP
+        summary.reason = "no_runnable_playbooks"
 
 
 root_agent = create_agent(instruction="You are a decision agent helper.")

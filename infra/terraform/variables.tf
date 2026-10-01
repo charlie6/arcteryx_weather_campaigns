@@ -169,6 +169,8 @@ variable "gcp_apis" {
     "pollen.googleapis.com",
     "weather.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "monitoring.googleapis.com",
+    "logging.googleapis.com",
   ]
 }
 
@@ -349,4 +351,44 @@ variable "log_level" {
   description = "Log level for the Cloud Run application (DEBUG, INFO, WARNING, ERROR)."
   type        = string
   default     = "INFO"
+}
+
+# --- Monitoring ---
+
+variable "enable_sa360" {
+  description = "Schedule SA360 decision agent runs. Set false when only Google Ads is used."
+  type        = bool
+  default     = true
+}
+
+variable "enable_monitoring" {
+  description = "Create log-based metrics, alert policies and the ADSTA Operations dashboard."
+  type        = bool
+  default     = true
+}
+
+variable "alert_notification_emails" {
+  description = "Email addresses notified by every ADSTA alert. Empty = alerts only visible in the console."
+  type        = list(string)
+  default     = []
+}
+
+variable "alert_additional_notification_channel_ids" {
+  description = "Existing notification channel IDs (Slack, PagerDuty, Google Chat...) attached to every alert."
+  type        = list(string)
+  default     = []
+}
+
+variable "monitoring_heartbeat_windows" {
+  description = <<-EOT
+    Map of usecase to how long without a completed run before the missed-run
+    alert fires. Keep slightly above the gap between scheduled runs (the
+    default Google Ads cron runs every 12h, SA360 every 24h). Remove a key to
+    disable that heartbeat, e.g. when SA360 is not used.
+  EOT
+  type        = map(string)
+  default = {
+    GoogleAds = "13h"
+    SA360     = "25h"
+  }
 }

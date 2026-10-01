@@ -195,15 +195,7 @@ async def scheduler_init_and_run(request: Request):
     start_time = time.perf_counter()
     try:
         # Run asynchronous controller
-        await run_decision_agent(customer_id, usecase)
-        elapsed = time.perf_counter() - start_time
-        logger.info(
-            "Scheduler: Decision agent completed successfully for customer_id=%s in %.2fs",
-            customer_id,
-            elapsed,
-            extra={"customer_id": str(customer_id), "duration_s": elapsed},
-        )
-        return {"status": "success", "message": f"Decision agent run completed for {customer_id}"}
+        summary = await run_decision_agent(customer_id, usecase)
     except Exception as e:
         elapsed = time.perf_counter() - start_time
         logger.exception(
@@ -214,6 +206,45 @@ async def scheduler_init_and_run(request: Request):
             extra={"customer_id": str(customer_id), "duration_s": elapsed},
         )
         raise HTTPException(status_code=500, detail=str(e))
+
+    elapsed = time.perf_counter() - start_time
+    outcome = getattr(summary, "outcome", "success")
+    reason = getattr(summary, "reason", "")
+
+    # Report failures as 5xx so Cloud Scheduler records the job attempt as
+    # failed and the scheduler-failure alert fires. Previously every run,
+    # including one where every playbook failed or the config was missing,
+    # answered 200 "success". Scheduler retries are disabled (retry_count=0),
+    # so a 5xx here can never cause a campaign change to be applied twice.
+    if getattr(summary, "is_failure", False):
+        logger.error(
+            "Scheduler: Decision agent run for customer_id=%s ended with outcome=%s "
+            "(reason=%s) in %.2fs",
+            customer_id,
+            outcome,
+            reason,
+            elapsed,
+            extra={"customer_id": str(customer_id), "duration_s": elapsed, "outcome": outcome},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Decision agent run {outcome} for {customer_id}: {reason or 'see logs'}",
+        )
+
+    logger.info(
+        "Scheduler: Decision agent completed for customer_id=%s in %.2fs (outcome=%s)",
+        customer_id,
+        elapsed,
+        outcome,
+        extra={"customer_id": str(customer_id), "duration_s": elapsed, "outcome": outcome},
+    )
+    if outcome == "success":
+        return {"status": "success", "message": f"Decision agent run completed for {customer_id}"}
+    return {
+        "status": outcome,
+        "reason": reason,
+        "message": f"Decision agent run completed for {customer_id} with outcome '{outcome}'",
+    }
 
 def main():
   """Starts the FastAPI server."""

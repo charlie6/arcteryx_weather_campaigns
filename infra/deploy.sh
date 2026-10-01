@@ -170,6 +170,10 @@ ROLES=(
   "roles/firebase.admin"
   "roles/resourcemanager.projectIamAdmin"
   "roles/iam.serviceAccountAdmin"
+  # Monitoring module: alert policies, dashboards, notification channels
+  # and log-based metrics.
+  "roles/monitoring.editor"
+  "roles/logging.configWriter"
 )
 
 for role in "${ROLES[@]}"; do

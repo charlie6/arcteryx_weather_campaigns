@@ -127,6 +127,10 @@ module "cloud_run_service" {
 
 # Combined Scheduler Job for Decision Agent
 resource "google_cloud_scheduler_job" "sa_combined_job" {
+  # Optional: with enable_sa360 = false no SA360 run is scheduled. Otherwise a
+  # job with a placeholder customer ID would fail every day and page the
+  # scheduler-failure alert.
+  count            = var.enable_sa360 ? 1 : 0
   project          = var.project_id
   region           = var.region
   name             = local.sa_combined_scheduler_job_name
@@ -202,6 +206,41 @@ resource "google_cloud_scheduler_job" "google_ads_combined_job" {
       audience              = "${module.cloud_run_service.service_url}/scheduler/init_and_run"
     }
   }
+}
+
+# The SA360 job gained `count`; keep existing SA360 deployments in place.
+moved {
+  from = google_cloud_scheduler_job.sa_combined_job
+  to   = google_cloud_scheduler_job.sa_combined_job[0]
+}
+
+# --- Monitoring: log-based metrics, alerts and dashboard ---
+module "monitoring" {
+  source          = "./modules/monitoring"
+  count           = var.enable_monitoring ? 1 : 0
+  project_id      = var.project_id
+  resource_prefix = var.resource_prefix
+  service_name    = module.cloud_run_service.name
+  scheduler_job_names = concat(
+    [google_cloud_scheduler_job.google_ads_combined_job.name],
+    [for job in google_cloud_scheduler_job.sa_combined_job : job.name],
+  )
+  notification_emails                 = var.alert_notification_emails
+  additional_notification_channel_ids = var.alert_additional_notification_channel_ids
+  # No SA360 heartbeat when SA360 is disabled, whatever the windows map says.
+  heartbeat_windows = {
+    for usecase, window in var.monitoring_heartbeat_windows : usecase => window
+    if usecase != "SA360" || var.enable_sa360
+  }
+  # Warn at 80% of the scheduler attempt deadline.
+  run_duration_warning_seconds = floor(tonumber(trimsuffix(var.sa_run_sse_scheduler_job_attempt_deadline, "s")) * 0.8)
+
+  depends_on = [google_project_service.apis]
+}
+
+output "monitoring_dashboard_url" {
+  description = "ADSTA Operations dashboard"
+  value       = var.enable_monitoring ? module.monitoring[0].dashboard_url : null
 }
 
 # --- Scheduler Verification Outputs ---
