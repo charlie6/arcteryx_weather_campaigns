@@ -357,9 +357,9 @@ variable "log_level" {
 # --- Monitoring ---
 
 variable "enable_sa360" {
-  description = "Schedule SA360 decision agent runs. Set false when only Google Ads is used."
+  description = "Schedule SA360 decision agent runs. Off by default; set true only when SA360 is used."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_monitoring" {

@@ -100,18 +100,23 @@ class TestSA360Toolset(unittest.TestCase):
         mock_update_prop.assert_any_call('123', 'Campaign status', 'ENABLED', 'sheet_id', 'sheet_name')
 
     @patch('agentic_dsta.tools.sa360.sa360_toolset.get_sheets_service')
-    @patch('agentic_dsta.tools.sa360.sa360_toolset.get_sa360_campaign_details_sheet')
-    @patch('agentic_dsta.tools.sa360.sa360_toolset.get_sa360_campaign_details')
-    @patch('agentic_dsta.tools.sa360.sa360_toolset.compare_campaign_data', return_value=True)
-    @patch('agentic_dsta.tools.sa360.sa360_toolset._update_campaign_property')
-    def test_update_campaign_status_not_found(self, mock_update_prop, mock_compare, mock_get_api_details, mock_get_sheet_details, mock_get_service):
+    def test_update_campaign_status_not_found(self, mock_get_service):
+        # The campaign lookup happens inside _update_campaign_property, so run
+        # it for real against a sheet that does not contain campaign 789.
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_get_sheet_details.side_effect = ValueError("Campaign with ID '789' not found")
-        mock_get_api_details.return_value = {"campaign": {"id": "789"}}
+        mock_sheet = MagicMock()
+        mock_service.spreadsheets.return_value = mock_sheet
+        mock_sheet.values.return_value.get.return_value.execute.return_value = {
+            'values': [
+                ['Campaign ID', 'Row Type', 'Campaign status'],
+                ['123', 'Campaign', 'PAUSED'],
+            ]
+        }
 
         with self.assertRaisesRegex(ValueError, "Campaign with ID '789' not found"):
             sa360_toolset.update_sa360_campaign_status('789', 'ENABLED', 'sheet_id', 'sheet_name', '1234567890')
+        mock_sheet.values.return_value.update.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()

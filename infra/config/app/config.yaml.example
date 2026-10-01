@@ -56,8 +56,8 @@ google_ads_force_user_creds: "true"
 # to fall back to the target customer ID. Dashes are stripped automatically.
 google_ads_login_customer_id: "YOUR_MCC_CUSTOMER_ID"
 
-# SA360 is optional. With enable_sa360 false no SA360 scheduler job is created,
-# so sa360_customer_id is unused.
+# SA360 is optional and off by default. With enable_sa360 false (or omitted) no
+# SA360 scheduler job is created, so sa360_customer_id is unused.
 enable_sa360: false
 #SA360 Customer ID to be triggered from cloud scheduler
 sa360_customer_id: "SA360_CUSTOMER_ID"
