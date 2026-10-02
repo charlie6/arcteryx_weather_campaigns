@@ -600,6 +600,7 @@ def _check_change_volume_guard(
     run_id: str,
     guard_config: Dict[str, Any],
     eligible_campaigns: int,
+    customer_id: Optional[str] = None,
 ) -> None:
     """Reports whether a run exceeded the configured change volume cap.
 
@@ -623,6 +624,7 @@ def _check_change_volume_guard(
         run_id: The identifier shared by every decision in this run.
         guard_config: The account's 'changeVolumeGuard' block.
         eligible_campaigns: Number of campaigns considered in this run.
+        customer_id: The account the run processed, added to the alert event.
     """
     if not guard_config.get("enabled"):
         return
@@ -674,6 +676,7 @@ def _check_change_volume_guard(
             extra=telemetry.event_fields(
                 telemetry.EVENT_CHANGE_GUARD_EXCEEDED,
                 run_id=run_id,
+                customer_id=customer_id,
                 budget_changes=len(changed),
                 cap=cap,
                 eligible_campaigns=eligible_campaigns,
@@ -1333,6 +1336,7 @@ async def _execute_run(
         run_id=run_id,
         guard_config=ads_config.get("changeVolumeGuard", {}) or {},
         eligible_campaigns=eligible_campaigns,
+        customer_id=customer_id,
     )
 
     # The run_completed event itself is emitted by run_decision_agent.

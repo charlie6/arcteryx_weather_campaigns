@@ -32,8 +32,9 @@ firestore_database_type: "FIRESTORE_NATIVE"
 # with runsPerDay 2 in Firestore turns a 24-hour trailing window into 48 hours.
 googleads_scheduler_schedule: "0 6,18 * * *"
 sa360_scheduler_schedule: "5 10 * * *"
-# Timezone for both scheduler jobs. Each account should run in its own local
-# time, so a multi-account rollout needs one deployment per account.
+# Timezone for the scheduler jobs. Additional Google Ads accounts can set their
+# own (googleads_additional_customers below), so one deployment can run several
+# accounts, each in its local time.
 sa_run_sse_scheduler_job_timezone: "America/Vancouver"
 
 # Gemini model configuration.
@@ -59,6 +60,17 @@ additional_secrets: ["GOOGLE_API_KEY"]
 
 #Google Ads Customer ID to be triggered from cloud scheduler
 googleads_customer_id: "GOOGLE_ADS_CUSTOMER_ID"
+# More Google Ads accounts under the same MCC, each with its own scheduler job
+# (<resource_prefix>-ga-<id>-job) and missed-run alert. Quote the IDs and crons.
+# Every field is optional (defaults: googleads_scheduler_schedule,
+# sa_run_sse_scheduler_job_timezone, monitoring_heartbeat_windows.GoogleAds).
+# Stagger schedules ~15 minutes apart. Before deploying, add the account's
+# Accounts/Campaigns rows to the sheet and seed its CustomerInstructions:
+#   sync_config_sheet.py seed-account --customer_id NEW --from_customer_id EXISTING
+# See infra/CONFIG_SHEET.md, "Adding a Google Ads account".
+# googleads_additional_customers:
+#   "1112223333": { schedule: "15 6,18 * * *" }
+#   "4445556666": { schedule: "30 6,18 * * *", time_zone: "America/Toronto" }
 
 # Auth and MCC Configuration
 google_ads_force_user_creds: "true"

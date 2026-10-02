@@ -77,8 +77,9 @@ A blank threshold means the playbook default applies (9.0 °C, 0.2 mm/h, 3 h). R
 
 ## How a sync behaves
 
-- **Validation:** if any row has an error, **nothing is written**. Runs keep using the last good configuration, and the "Config sheet needs attention" alert fires. The log and `SyncLog` name the tab, row and column of each error.
-- **Scope:** a scheduled run syncs its own account's `Accounts` and `Campaigns` rows, plus all `Cities` rows.
+- **Validation:** a sync with an error that concerns it writes **nothing**, not even its valid rows. Runs keep using the last good configuration, and the "Config sheet needs attention" alert fires. The log and `SyncLog` name the tab, row and column of each error.
+- **Errors are per account:** a scheduled run is blocked by errors in its own account's rows, in the `Cities` tab (shared by every account), and in rows whose Customer ID can't be read (they could belong to any account). Another account's errors don't block it. They are listed with "does not block this sync", the alert still fires, and that account's own syncs stay blocked until the rows are fixed. A campaign listed under two accounts blocks both. `sync_config_sheet.py` without `--customer_id` is blocked by any error.
+- **Scope:** a scheduled run syncs its own account's `Accounts` and `Campaigns` rows, plus all `Cities` rows. The `SyncLog` Source column shows which account's run wrote the row, for example `scheduled_run (5341114500)`.
 - **Settings the sheet doesn't show** stay as they are in `GoogleAdsConfig`, for example `params.hemisphere`.
 - **Redeploys** keep the city thresholds. `upload_config.py` replaces `ClimateBaselines` but preserves `activation`. Only `FIRESTORE_SEED_MODE=overwrite` resets them.
 - **Audit trail:** each sync that changes something writes `ConfigChangeLog/{syncId}`. Budget pushes also write a `ChangeLog` row and a `mutation_applied` event.
@@ -95,3 +96,35 @@ The normal daily budget is what ADSTA returns to after a severe-weather increase
 | Shared budget, or the budget can't be read | Skips the campaign and reports why. |
 
 `ADSTA_DRY_RUN` applies here as well. In dry-run mode the sync reports budget pushes but doesn't make them.
+
+## Adding a Google Ads account
+
+One deployment can run several Google Ads accounts under the same manager (MCC) account. Each account has its own scheduler job and its own "Missed runs" alert. Its runs and syncs are independent of the other accounts.
+
+1. Check that the account is linked under the MCC in `google_ads_login_customer_id`, and that the Google user behind ADSTA's refresh token can open it. No new credentials are needed.
+2. Add the account's row to `Accounts` and its campaigns to `Campaigns`. Check them before anything runs:
+   ```bash
+   python3 infra/scripts/config/sync_config_sheet.py plan --customer_id NEW_ID \
+     --sheet_id SHEET_ID --project_id PROJECT --database <prefix>-firestore
+   ```
+3. Give the account its run instructions by copying a working account's. This only creates the document; an existing one is never changed:
+   ```bash
+   python3 infra/scripts/config/sync_config_sheet.py seed-account \
+     --customer_id NEW_ID --from_customer_id EXISTING_ID --project_id PROJECT --database <prefix>-firestore
+   ```
+   Without `CustomerInstructions/NEW_ID`, every run for the account aborts. The sync warns about it.
+4. Add the account to `infra/config/app/config.yaml` and redeploy. Quote the IDs and the cron strings:
+   ```yaml
+   googleads_additional_customers:
+     "1112223333": { schedule: "15 6,18 * * *" }
+     "4445556666": { schedule: "30 6,18 * * *", time_zone: "America/Toronto" }
+   ```
+   - `googleads_customer_id` stays the first account, and its job keeps its name, `<prefix>-ga-combined-job`. Each additional account gets `<prefix>-ga-<id>-job`. The Terraform output `google_ads_scheduler_jobs` lists them all.
+   - Every field is optional. `schedule` and `time_zone` default to `googleads_scheduler_schedule` and `sa_run_sse_scheduler_job_timezone`. `heartbeat_window`, the missed-run window, defaults to `monitoring_heartbeat_windows.GoogleAds`.
+   - Stagger the schedules about 15 minutes apart. Runs that overlap share one Cloud Run instance and call Gemini at the same time, and `max_concurrent_campaigns` applies to each run separately.
+   - Keep the account's `Runs per day` in step with its cron.
+5. In Cloud Scheduler, use **Force run** on the new job and check its logs. The account's "Missed runs" alert fires until its first run completes.
+
+`ADSTA_DRY_RUN` applies to every account in the deployment.
+
+To remove an account, delete its entry from `googleads_additional_customers` and redeploy. This deletes its job and its alert. Then delete its rows or set its campaigns' `Active` to `N`. Its Firestore documents stay, unused.

@@ -422,6 +422,7 @@ The following table describes each parameter in the `config.yaml` file:
 | `googleads_scheduler_schedule` | The cron schedule for triggering the Google Ads agent.                                                  | `"0 0 * * *"`                                 |
 | `sa360_scheduler_schedule`     | The cron schedule for triggering the SA360 agent.                                                       | `"0 0 * * *"`                                 |
 | `googleads_customer_id`        | The Google Ads Customer ID for the scheduler job payload.                                               | `"1234567890"`                                |
+| `googleads_additional_customers` | More Google Ads accounts under the same MCC, each with its own scheduler job and missed-run alert. Optional per account: `schedule`, `time_zone`, `heartbeat_window`. See [CONFIG_SHEET.md](infra/CONFIG_SHEET.md#adding-a-google-ads-account). | `{"1112223333": {schedule: "15 6,18 * * *"}}` |
 | `sa360_customer_id`            | The SA360 Customer ID for the scheduler job payload.                                                    | `"1234567890"`                                |
 
 ## Data Models and APIs

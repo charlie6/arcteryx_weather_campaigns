@@ -200,7 +200,12 @@ def test_is_budget_increase(row: Dict[str, Any], expected: bool) -> None:
     assert agent_module._is_budget_increase(row) is expected
 
 
-def _guard(rows: List[Dict[str, Any]], eligible: int, caplog: pytest.LogCaptureFixture) -> List[logging.LogRecord]:
+def _guard(
+    rows: List[Dict[str, Any]],
+    eligible: int,
+    caplog: pytest.LogCaptureFixture,
+    customer_id: Optional[str] = None,
+) -> List[logging.LogRecord]:
     toolset = MagicMock()
     toolset.query_collection.return_value = {"documents": [{"data": r} for r in rows]}
     with caplog.at_level(logging.INFO):
@@ -209,6 +214,7 @@ def _guard(rows: List[Dict[str, Any]], eligible: int, caplog: pytest.LogCaptureF
             run_id="run-1",
             guard_config={"enabled": True, "maxFractionOfEligibleCampaigns": 0.25},
             eligible_campaigns=eligible,
+            customer_id=customer_id,
         )
     return [r for r in caplog.records if getattr(r, "event", None) == telemetry.EVENT_CHANGE_GUARD_EXCEEDED]
 
@@ -232,3 +238,11 @@ def test_guard_fires_on_increases(caplog: pytest.LogCaptureFixture) -> None:
     assert len(events) == 1
     assert events[0].budget_changes == 2
     assert events[0].cap == 1
+
+
+def test_guard_event_names_the_account(caplog: pytest.LogCaptureFixture) -> None:
+    # One deployment can run several accounts; the alert must say which one.
+    rows = [{"budgetBeforeMicros": 1000000, "budgetAfterMicros": 1500000}] * 2
+    events = _guard(rows, eligible=2, caplog=caplog, customer_id=CUSTOMER_ID)
+    assert len(events) == 1
+    assert events[0].customer_id == CUSTOMER_ID

@@ -45,6 +45,27 @@ locals {
 
   # Appended to every alert notification.
   runbook_footer = "**Investigate:** [ADSTA Operations dashboard](${local.dashboard_url}) | [Logs Explorer](${local.logs_url})"
+
+  # Missed-run heartbeats: one per Google Ads account when the accounts are
+  # known, otherwise one per usecase. `matchers` are the PromQL label matchers
+  # on adsta_runs.
+  run_matchers = "monitored_resource=\"cloud_run_revision\",service_name=\"${var.service_name}\""
+  heartbeats = merge(
+    {
+      for usecase, window in var.heartbeat_windows : usecase => {
+        label    = usecase
+        window   = window
+        matchers = "${local.run_matchers},usecase=\"${usecase}\""
+      } if !(usecase == "GoogleAds" && length(var.googleads_customer_heartbeats) > 0)
+    },
+    {
+      for customer_id, window in var.googleads_customer_heartbeats : "GoogleAds-${customer_id}" => {
+        label    = "GoogleAds ${customer_id}"
+        window   = window
+        matchers = "${local.run_matchers},usecase=\"GoogleAds\",customer_id=\"${customer_id}\""
+      }
+    },
+  )
 }
 
 # --- Notification channels ---------------------------------------------------
@@ -85,11 +106,18 @@ resource "google_logging_metric" "runs" {
       key         = "reason"
       description = "Why a run aborted, failed or did nothing"
     }
+    # Added for multi-account deployments (one heartbeat per account). Log-based
+    # metric labels can be added but never removed.
+    labels {
+      key         = "customer_id"
+      description = "Customer ID the run processed"
+    }
   }
   label_extractors = {
-    usecase = "EXTRACT(jsonPayload.extra.usecase)"
-    outcome = "EXTRACT(jsonPayload.extra.outcome)"
-    reason  = "EXTRACT(jsonPayload.extra.reason)"
+    usecase     = "EXTRACT(jsonPayload.extra.usecase)"
+    outcome     = "EXTRACT(jsonPayload.extra.outcome)"
+    reason      = "EXTRACT(jsonPayload.extra.reason)"
+    customer_id = "EXTRACT(jsonPayload.extra.customer_id)"
   }
 }
 
@@ -202,19 +230,22 @@ resource "google_logging_metric" "tool_errors" {
 
 # --- Alert policies: critical ------------------------------------------------
 
-# 1. Missed runs. PromQL is used instead of a metric-absence condition because
-# absence conditions max out at 23.5h, which is shorter than the daily SA360
-# schedule. Note: fires after first deploy until the first run completes.
+# 1. Missed runs, one alert per Google Ads account (or per usecase). PromQL is
+# used instead of a metric-absence condition because absence conditions max
+# out at 23.5h, which is shorter than the daily SA360 schedule.
+# Note: fires after a fresh deploy, after adding an account, and once after the
+# upgrade that introduced the customer_id label, until that account's next run
+# completes (points written before carry no customer_id).
 resource "google_monitoring_alert_policy" "missed_runs" {
-  for_each     = var.heartbeat_windows
+  for_each     = local.heartbeats
   project      = var.project_id
-  display_name = "${var.resource_prefix} - CRITICAL - Missed runs (${each.key})"
+  display_name = "${var.resource_prefix} - CRITICAL - Missed runs (${each.value.label})"
   combiner     = "OR"
   severity     = "CRITICAL"
   conditions {
-    display_name = "No ${each.key} run_completed event in ${each.value}"
+    display_name = "No ${each.value.label} run_completed event in ${each.value.window}"
     condition_prometheus_query_language {
-      query               = "absent_over_time(logging_googleapis_com:user_adsta_runs{monitored_resource=\"cloud_run_revision\",service_name=\"${var.service_name}\",usecase=\"${each.key}\"}[${each.value}])"
+      query               = "absent_over_time(logging_googleapis_com:user_adsta_runs{${each.value.matchers}}[${each.value.window}])"
       duration            = "0s"
       evaluation_interval = "300s"
     }
@@ -224,12 +255,12 @@ resource "google_monitoring_alert_policy" "missed_runs" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **No ${each.key} decision agent run has completed in ${each.value}.** Weather-driven changes are not being applied.
+      **No ${each.value.label} decision agent run has completed in ${each.value.window}.** Weather-driven changes are not being applied for it.
 
-      1. Cloud Scheduler: confirm the job is ENABLED and check its last attempt status.
+      1. Cloud Scheduler: confirm the job for this account is ENABLED and check its last attempt status.
       2. Check the scheduler-failure alert, which usually fires first with the cause.
       3. [Logs](${local.logs_url}): `jsonPayload.extra.event="run_started"` to see if runs start but never finish (crash/OOM/timeout).
-      4. Right after a fresh deploy, this fires until the first scheduled run completes.
+      4. Right after a fresh deploy or after adding an account, this fires until the account's first run completes. Use **Force run** on its scheduler job to clear it.
 
       ${local.runbook_footer}
     EOT
@@ -297,7 +328,8 @@ resource "google_monitoring_alert_policy" "change_guard" {
         jsonPayload.extra.event="change_guard_exceeded"
       EOT
       label_extractors = {
-        run_id = "EXTRACT(jsonPayload.extra.run_id)"
+        run_id      = "EXTRACT(jsonPayload.extra.run_id)"
+        customer_id = "EXTRACT(jsonPayload.extra.customer_id)"
       }
     }
   }
@@ -312,7 +344,7 @@ resource "google_monitoring_alert_policy" "change_guard" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **Run `$${log.extracted_label.run_id}` changed more budgets than the configured cap.** This may mean a bad weather data feed.
+      **Run `$${log.extracted_label.run_id}` (customer $${log.extracted_label.customer_id}) changed more budgets than the configured cap.** This may mean a bad weather data feed.
 
       The guard only detects after the fact; changes have already been applied.
       1. Review Firestore `ChangeLog` rows where `runId == $${log.extracted_label.run_id}`.
@@ -383,8 +415,9 @@ resource "google_monitoring_alert_policy" "degraded_run" {
         (jsonPayload.extra.outcome="partial" OR jsonPayload.extra.reason="no_runnable_playbooks")
       EOT
       label_extractors = {
-        run_id  = "EXTRACT(jsonPayload.extra.run_id)"
-        outcome = "EXTRACT(jsonPayload.extra.outcome)"
+        run_id      = "EXTRACT(jsonPayload.extra.run_id)"
+        outcome     = "EXTRACT(jsonPayload.extra.outcome)"
+        customer_id = "EXTRACT(jsonPayload.extra.customer_id)"
       }
     }
   }
@@ -399,7 +432,7 @@ resource "google_monitoring_alert_policy" "degraded_run" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **Run `$${log.extracted_label.run_id}` did not fully succeed** (outcome: $${log.extracted_label.outcome}).
+      **Run `$${log.extracted_label.run_id}` (customer $${log.extracted_label.customer_id}) did not fully succeed** (outcome: $${log.extracted_label.outcome}).
 
       - partial: [Logs](${local.logs_url}) `jsonPayload.extra.event="playbook_failed" jsonPayload.extra.run_id="$${log.extracted_label.run_id}"`.
       - partial with reason `campaigns_skipped`: a campaign's live name did not contain its `Campaign name contains` value (or it could not be read), so nothing was done for it. [Logs](${local.logs_url}) `jsonPayload.extra.event="campaign_name_mismatch"`. Fix the Campaigns tab row (name text or campaign ID).
@@ -470,7 +503,8 @@ resource "google_monitoring_alert_policy" "slow_run" {
         jsonPayload.extra.total_duration_s > ${var.run_duration_warning_seconds}
       EOT
       label_extractors = {
-        run_id = "EXTRACT(jsonPayload.extra.run_id)"
+        run_id      = "EXTRACT(jsonPayload.extra.run_id)"
+        customer_id = "EXTRACT(jsonPayload.extra.customer_id)"
       }
     }
   }
@@ -485,9 +519,9 @@ resource "google_monitoring_alert_policy" "slow_run" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **Run `$${log.extracted_label.run_id}` took more than ${var.run_duration_warning_seconds}s.** All campaigns run in a single request, `max_concurrent_campaigns` at a time, so adding campaigns will eventually hit the scheduler deadline (DEADLINE_EXCEEDED).
+      **Run `$${log.extracted_label.run_id}` (customer $${log.extracted_label.customer_id}) took more than ${var.run_duration_warning_seconds}s.** All of an account's campaigns run in a single request, `max_concurrent_campaigns` at a time, so adding campaigns will eventually hit the scheduler deadline (DEADLINE_EXCEEDED).
 
-      Options: raise `max_concurrent_campaigns` in config.yaml (watch for Gemini 429s), raise `sa_run_sse_scheduler_job_attempt_deadline` (max 1800s), or split accounts across jobs.
+      Options: raise `max_concurrent_campaigns` in config.yaml (watch for Gemini 429s), raise `sa_run_sse_scheduler_job_attempt_deadline` (max 1800s), or move campaigns to another Google Ads account with its own job (`googleads_additional_customers`).
 
       ${local.runbook_footer}
     EOT
@@ -511,8 +545,9 @@ resource "google_monitoring_alert_policy" "config_sync" {
         jsonPayload.extra.needs_attention="true"
       EOT
       label_extractors = {
-        outcome   = "EXTRACT(jsonPayload.extra.outcome)"
-        conflicts = "EXTRACT(jsonPayload.extra.conflicts)"
+        outcome     = "EXTRACT(jsonPayload.extra.outcome)"
+        conflicts   = "EXTRACT(jsonPayload.extra.conflicts)"
+        customer_id = "EXTRACT(jsonPayload.extra.customer_id)"
       }
     }
   }
@@ -527,10 +562,11 @@ resource "google_monitoring_alert_policy" "config_sync" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      **The configuration sheet was not fully applied** (outcome: $${log.extracted_label.outcome}, budget conflicts: $${log.extracted_label.conflicts}). Runs continue on the last good configuration in Firestore.
+      **The configuration sheet was not fully applied** (sync for customer $${log.extracted_label.customer_id}, outcome: $${log.extracted_label.outcome}, budget conflicts: $${log.extracted_label.conflicts}). Runs continue on the last good configuration in Firestore.
 
       The sheet's `SyncLog` tab and the log line itself list every problem with its tab, row and column.
-      - invalid: fix the rows named in the log. Nothing was written, not even the valid rows.
+      - invalid: fix the rows named in the log. Nothing was written for this account, not even its valid rows. A scheduled run is blocked only by its own account's rows, the Cities tab, and rows whose Customer ID can't be read.
+      - errors marked "does not block this sync": another account's rows are invalid. This account synced normally; that account's syncs are held (its runs continue on its last good configuration) until the rows are fixed.
       - error: the sheet could not be read. Check it is shared with the Cloud Run service account and that `CONFIG_SHEET_ID` is correct.
       - conflicts: a budget was changed outside the sheet (by hand in Google Ads, or adopted by ADSTA). Set the sheet to the live value to accept it, or enter a new value to override it.
       - partial: a budget push to Google Ads failed. The next run retries it.

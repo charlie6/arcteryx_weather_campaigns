@@ -18,6 +18,7 @@ import datetime
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from google.api_core import exceptions as gexc
 from google.cloud import firestore
 import pytest
 
@@ -72,6 +73,11 @@ class FakeDoc:
                 self._store[self._key].pop(field, None)
             else:
                 self._store[self._key][field] = copy.deepcopy(value)
+
+    def create(self, data):
+        if self._key in self._store:
+            raise gexc.AlreadyExists(f"{self._key} already exists")
+        self._store[self._key] = copy.deepcopy(data)
 
 
 class FakeCollection:
@@ -378,6 +384,199 @@ class TestApply:
         assert any("CustomerInstructions/1112223333" in str(i) for i in plan.issues)
 
 
+# --- Several accounts in one sheet ------------------------------------------------
+
+OTHER = "1112223333"
+THIRD = "4445556666"
+
+
+def two_account_tabs(other_campaign: Optional[Dict[str, Any]] = None, **sheet: Any):
+    """The seeded account plus OTHER with one campaign (42); overrides apply to OTHER's row."""
+    campaign = {"Customer ID": OTHER, "Campaign ID": 42, "Normal daily budget": ""}
+    campaign.update(other_campaign or {})
+    return tabs(
+        accounts=[account_row(), account_row(**{"Customer ID": OTHER})],
+        campaigns=[campaign_row(), campaign_row(**campaign)],
+        **sheet,
+    )
+
+
+def two_account_db() -> FakeDb:
+    db = seeded_db()
+    db.store[("CustomerInstructions", OTHER)] = {"instruction": "x"}
+    return db
+
+
+class FakeSheets:
+    """Serves the operator tabs to read_sheet and records SyncLog appends."""
+
+    def __init__(self, sheet_tabs: Optional[Dict[str, List[List[Any]]]] = None):
+        self.tabs = sheet_tabs or {}
+        self.rows: List[List[Any]] = []
+        self._response: Dict[str, Any] = {}
+
+    def spreadsheets(self):
+        return self
+
+    def values(self):
+        return self
+
+    def batchGet(self, spreadsheetId, ranges, valueRenderOption):  # pylint: disable=invalid-name,unused-argument
+        self._response = {"valueRanges": [{"values": self.tabs.get(r.strip("'"), [])} for r in ranges]}
+        return self
+
+    def append(self, spreadsheetId, range, valueInputOption, insertDataOption, body):  # pylint: disable=invalid-name,redefined-builtin,unused-argument
+        self.rows.extend(body["values"])
+        self._response = {}
+        return self
+
+    def execute(self):
+        return self._response
+
+
+class TestAccountScopedSync:
+    """A scheduled run syncs only its own account's rows (plus the shared Cities)."""
+
+    def test_other_accounts_errors_do_not_block_a_scoped_sync(self):
+        db = two_account_db()
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        plan, result = run(db, two_account_tabs({"City": "Vancover BC"}), budgets, customer_filter=CUSTOMER)
+
+        assert result.outcome == sync.OUTCOME_APPLIED, plan.describe()
+        assert not plan.errors and not result.errors
+        assert len(result.other_account_errors) == 1
+        assert "Vancover BC" in result.other_account_errors[0]
+        assert "(customer 1112223333 only; does not block this sync)" in result.other_account_errors[0]
+        assert result.needs_attention
+        assert "does not block this sync" in plan.describe()
+        assert "NOTHING will be written" not in plan.describe()
+        # This account and the shared Cities synced; the broken account was not touched.
+        assert "activation" not in db.get("GoogleAdsConfig", CUSTOMER)["campaigns"][0]["params"]
+        assert "activation" in db.get("ClimateBaselines", "Vancouver BC")
+        assert db.get("GoogleAdsConfig", OTHER) is None
+
+    def test_sync_of_the_broken_account_writes_nothing(self):
+        db = two_account_db()
+        before = copy.deepcopy(db.store)
+        plan, result = run(db, two_account_tabs({"City": "Vancover BC"}), None, customer_filter=OTHER)
+        assert result.outcome == sync.OUTCOME_INVALID
+        assert result.other_account_errors == []
+        assert db.store == before  # not even the shared Cities
+        assert "NOTHING will be written" in plan.describe()
+
+    def test_unscoped_sync_is_blocked_by_any_account(self):
+        db = two_account_db()
+        before = copy.deepcopy(db.store)
+        _, result = run(db, two_account_tabs({"City": "Vancover BC"}), None, customer_filter=None)
+        assert result.outcome == sync.OUTCOME_INVALID
+        assert db.store == before
+
+    def test_cities_error_blocks_every_account(self):
+        db = two_account_db()
+        before = copy.deepcopy(db.store)
+        sheet = two_account_tabs(cities=[city_row(**{"Cold below C": "nine"})])
+        for customer in (CUSTOMER, OTHER):
+            _, result = run(db, sheet, None, customer_filter=customer)
+            assert result.outcome == sync.OUTCOME_INVALID, customer
+        assert db.store == before
+
+    def test_unreadable_customer_id_blocks_every_account(self):
+        # The row could be one of this account's campaigns: syncing without it
+        # would drop that campaign from the account's configuration.
+        db = two_account_db()
+        before = copy.deepcopy(db.store)
+        sheet = two_account_tabs({"Customer ID": "534-111-450"})
+        for customer in (CUSTOMER, OTHER):
+            _, result = run(db, sheet, None, customer_filter=customer)
+            assert result.outcome == sync.OUTCOME_INVALID, customer
+        assert db.store == before
+
+    def test_campaign_listed_under_two_accounts_blocks_both_but_not_a_third(self):
+        db = two_account_db()
+        db.store[("CustomerInstructions", THIRD)] = {"instruction": "x"}
+        sheet = tabs(
+            accounts=[account_row(), account_row(**{"Customer ID": OTHER}), account_row(**{"Customer ID": THIRD})],
+            campaigns=[
+                campaign_row(),
+                campaign_row(**{"Customer ID": OTHER, "Normal daily budget": ""}),  # same campaign ID
+                campaign_row(**{"Customer ID": THIRD, "Campaign ID": 77, "Normal daily budget": ""}),
+            ],
+        )
+        for customer in (CUSTOMER, OTHER):
+            _, result = run(db, sheet, None, customer_filter=customer)
+            assert result.outcome == sync.OUTCOME_INVALID, customer
+        _, result = run(db, sheet, None, customer_filter=THIRD)
+        assert result.outcome == sync.OUTCOME_APPLIED
+        assert len(result.other_account_errors) == 1
+        assert db.get("GoogleAdsConfig", THIRD)["campaigns"][0]["campaignId"] == 77
+        assert db.get("GoogleAdsConfig", OTHER) is None
+
+    def test_invalid_sync_lists_its_own_and_other_accounts_errors_separately(self):
+        db = two_account_db()
+        sheet = tabs(
+            accounts=[account_row(), account_row(**{"Customer ID": OTHER})],
+            campaigns=[
+                campaign_row(City="Vancover BC"),
+                campaign_row(**{"Customer ID": OTHER, "Campaign ID": 42, "Active": "maybe"}),
+            ],
+        )
+        _, result = run(db, sheet, None, customer_filter=CUSTOMER)
+        assert result.outcome == sync.OUTCOME_INVALID
+        assert len(result.errors) == 1 and "Vancover BC" in result.errors[0]
+        assert len(result.other_account_errors) == 1 and "not Y or N" in result.other_account_errors[0]
+
+    def test_new_account_without_instructions_points_to_seed_account(self):
+        db = seeded_db()  # no CustomerInstructions for OTHER
+        plan, _ = run(db, two_account_tabs(), None, customer_filter=OTHER)
+        warnings = [i for i in plan.issues if "CustomerInstructions/1112223333" in i.message]
+        assert len(warnings) == 1
+        assert "seed-account --customer_id 1112223333" in warnings[0].message
+        assert warnings[0].customer_ids == (OTHER,)
+        assert db.get("GoogleAdsConfig", OTHER)["campaigns"][0]["campaignId"] == 42
+
+    def test_alert_event_counts_other_accounts_errors(self, caplog):
+        _, result = run(two_account_db(), two_account_tabs({"Active": "maybe"}), None, customer_filter=CUSTOMER)
+        with caplog.at_level(logging.INFO):
+            sync.log_result(result, CUSTOMER)
+        events = [r for r in caplog.records if getattr(r, "event", None) == sync.EVENT_CONFIG_SYNC]
+        assert len(events) == 1
+        assert events[0].levelno == logging.WARNING
+        assert events[0].needs_attention == "true"
+        assert events[0].customer_id == CUSTOMER
+        assert (events[0].error_count, events[0].other_account_error_count) == (0, 1)
+        assert "does not block this sync" in events[0].getMessage()
+
+
+class TestSyncLog:
+    def test_noop_with_other_accounts_errors_is_logged_with_its_scope(self):
+        db = two_account_db()
+        sheet = two_account_tabs({"Active": "maybe"})
+        run(db, sheet, None, customer_filter=CUSTOMER)
+        _, result = run(db, sheet, None, customer_filter=CUSTOMER)
+        assert result.outcome == sync.OUTCOME_NOOP
+
+        service = FakeSheets()
+        sync.append_sync_log(service, "sheet", result, now=NOW, customer_id=CUSTOMER)
+        assert len(service.rows) == 1
+        row = service.rows[0]
+        assert row[:6] == ["2026-10-01 13:00:00", "test (5341114500)", sync.OUTCOME_NOOP, 0, 0, 1]
+        assert "does not block this sync" in row[6]
+
+    def test_clean_noop_is_not_logged(self):
+        db = seeded_db()
+        run(db, tabs(), None, customer_filter=CUSTOMER)
+        _, result = run(db, tabs(), None, customer_filter=CUSTOMER)
+        service = FakeSheets()
+        sync.append_sync_log(service, "sheet", result, now=NOW, customer_id=CUSTOMER)
+        assert service.rows == []
+
+    def test_unscoped_sync_keeps_the_plain_source(self):
+        _, result = run(seeded_db(), tabs(), None)
+        service = FakeSheets()
+        sync.append_sync_log(service, "sheet", result, now=NOW)
+        assert service.rows[0][1] == "test"
+
+
 class TestRunSheetSync:
     def test_never_raises_and_reports_an_error(self, caplog):
         def broken():
@@ -389,6 +588,50 @@ class TestRunSheetSync:
         assert result.outcome == sync.OUTCOME_ERROR
         events = [r for r in caplog.records if getattr(r, "event", None) == sync.EVENT_CONFIG_SYNC]
         assert events and events[0].needs_attention == "true"
+
+    def test_scheduled_sync_is_scoped_to_the_runs_account(self, caplog):
+        db = two_account_db()
+        service = FakeSheets(two_account_tabs({"City": "Vancover BC"}))
+        with caplog.at_level(logging.INFO):
+            result = sync.run_sheet_sync("sheet", db, CUSTOMER, service_factory=lambda: service,
+                                         budgets=FakeBudgets({str(CAMPAIGN): 10 * M}))
+        assert result.outcome == sync.OUTCOME_APPLIED
+        assert result.needs_attention
+        assert db.get("GoogleAdsConfig", OTHER) is None
+        assert service.rows[0][1] == "scheduled_run (5341114500)"
+        events = [r for r in caplog.records if getattr(r, "event", None) == sync.EVENT_CONFIG_SYNC]
+        assert events[0].customer_id == CUSTOMER and events[0].other_account_error_count == 1
+
+
+class TestCopyCustomerInstructions:
+    def test_copies_a_working_accounts_instructions(self, caplog):
+        db = seeded_db()
+        with caplog.at_level(logging.INFO):
+            assert sync.copy_customer_instructions(db, CUSTOMER, "111-222-3333") is True
+        assert db.get("CustomerInstructions", OTHER) == {"instruction": "x"}
+        assert any("Audit: created CustomerInstructions/1112223333" in r.getMessage() for r in caplog.records)
+
+    def test_never_overwrites_an_existing_document(self):
+        db = seeded_db()
+        db.store[("CustomerInstructions", OTHER)] = {"instruction": "custom"}
+        assert sync.copy_customer_instructions(db, CUSTOMER, OTHER) is False
+        assert db.get("CustomerInstructions", OTHER) == {"instruction": "custom"}
+
+    @pytest.mark.parametrize("source, target", [
+        (CUSTOMER, "534-111-4500"),  # same account
+        ("9998887777", OTHER),  # source missing
+    ])
+    def test_rejects_an_unusable_source(self, source, target):
+        db = seeded_db()
+        with pytest.raises(ValueError):
+            sync.copy_customer_instructions(db, source, target)
+        assert db.get("CustomerInstructions", OTHER) is None
+
+    def test_rejects_a_source_without_instruction_text(self):
+        db = seeded_db()
+        db.store[("CustomerInstructions", CUSTOMER)] = {"instruction": ""}
+        with pytest.raises(ValueError, match="no instruction"):
+            sync.copy_customer_instructions(db, CUSTOMER, OTHER)
 
 
 # --- Export round trip ----------------------------------------------------------------

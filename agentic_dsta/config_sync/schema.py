@@ -26,8 +26,13 @@ The sheet has three operator tabs and one log tab:
 
 Columns are matched by header text, not position, so operators can reorder
 columns or add their own (for example a Notes column); unknown headers are
-ignored. Validation is all-or-nothing: if any row has an error the sync writes
-nothing and Firestore keeps the last configuration that passed.
+ignored. Validation is all-or-nothing: a sync that has any error concerning
+it writes nothing, and Firestore keeps the last configuration that passed.
+Each issue records the account(s) it belongs to, so a sync scoped to one
+account (a scheduled run) is not blocked by another account's rows, while an
+unscoped sync (the CLI without --customer_id) is blocked by every error.
+Issues in the Cities tab, tab-level problems and rows whose Customer ID cannot
+be read concern every account.
 
 This module is pure: no network or Firestore access, which keeps it fully
 unit-testable.
@@ -148,6 +153,10 @@ class Issue:
             tab-level problem.
         column: Column header, or "" for a row- or tab-level problem.
         message: Human readable explanation.
+        customer_ids: The account(s) whose rows the issue is about. Empty
+            means it concerns every account: Cities rows, tab-level problems,
+            and rows whose Customer ID cell cannot be read (the row might
+            belong to any account, so guessing could drop its campaign).
     """
 
     severity: str
@@ -155,6 +164,19 @@ class Issue:
     row: int
     column: str
     message: str
+    customer_ids: Tuple[str, ...] = ()
+
+    def applies_to(self, customer_id: Optional[str]) -> bool:
+        """Whether this issue concerns a sync scoped to ``customer_id``.
+
+        Args:
+            customer_id: The account a sync is limited to, or None for a sync
+                of every account (which every issue concerns).
+
+        Returns:
+            True if the issue should count against that sync.
+        """
+        return customer_id is None or not self.customer_ids or customer_id in self.customer_ids
 
     def __str__(self) -> str:
         where = self.tab
@@ -287,7 +309,14 @@ def units_to_micros(units: float) -> int:
 
 
 class _RowReader:
-    """Reads and validates the cells of one data row, collecting issues."""
+    """Reads and validates the cells of one data row, collecting issues.
+
+    Attributes:
+        customer_ids: The account the row belongs to, set by the tab parser
+            once the Customer ID cell has been read successfully. Issues are
+            attributed to it; until it is set (or if the cell is unreadable)
+            they concern every account.
+    """
 
     def __init__(
         self,
@@ -305,6 +334,7 @@ class _RowReader:
         self._columns = columns
         self._issues = issues
         self.ok = True
+        self.customer_ids: Tuple[str, ...] = ()
 
     def raw(self, key: str) -> Any:
         """Returns the raw cell value, or None if the column is absent."""
@@ -313,19 +343,31 @@ class _RowReader:
             return None
         return self._cells[position]
 
-    def _report(self, key: str, message: str, severity: str = ERROR) -> None:
+    def _report(
+        self, key: str, message: str, severity: str = ERROR, also_customers: Sequence[str] = ()
+    ) -> None:
         if severity == ERROR:
             self.ok = False
         header = self._columns[key].header if key in self._columns else key
-        self._issues.append(Issue(severity, self.tab, self.row, header, message))
+        customers = self.customer_ids
+        if customers:
+            customers += tuple(c for c in also_customers if c and c not in customers)
+        self._issues.append(Issue(severity, self.tab, self.row, header, message, customers))
 
     def warn(self, key: str, message: str) -> None:
         """Records a non-blocking warning against a cell."""
         self._report(key, message, WARNING)
 
-    def error(self, key: str, message: str) -> None:
-        """Records a blocking error against a cell."""
-        self._report(key, message, ERROR)
+    def error(self, key: str, message: str, also_customers: Sequence[str] = ()) -> None:
+        """Records a blocking error against a cell.
+
+        Args:
+            key: Column key.
+            message: Explanation.
+            also_customers: Other accounts the error also blocks, for problems
+                that span two accounts' rows.
+        """
+        self._report(key, message, ERROR, also_customers)
 
     def text(self, key: str, required: bool = False) -> Optional[str]:
         """Reads a text cell, stripped. Numbers are converted to text."""
@@ -460,6 +502,8 @@ def _parse_accounts(values, issues: List[Issue]) -> Dict[str, AccountRow]:
     accounts: Dict[str, AccountRow] = {}
     for reader in _iter_rows(ACCOUNTS_TAB, values, ACCOUNT_COLUMNS, issues):
         customer_id = reader.digits("customerId", length=10)
+        if customer_id:
+            reader.customer_ids = (customer_id,)
         timezone = reader.text("timezone", required=True)
         if timezone:
             try:
@@ -509,18 +553,31 @@ def _parse_campaigns(
     known_cities: Set[str],
 ) -> List[CampaignRow]:
     campaigns: List[CampaignRow] = []
-    seen_ids: Dict[int, int] = {}
+    seen_ids: Dict[int, Tuple[int, str]] = {}
     for reader in _iter_rows(CAMPAIGNS_TAB, values, CAMPAIGN_COLUMNS, issues):
         customer_id = reader.digits("customerId", length=10)
+        if customer_id:
+            reader.customer_ids = (customer_id,)
         if customer_id and customer_id not in accounts:
             reader.error("customerId", f"customer {customer_id} has no valid row in the {ACCOUNTS_TAB} tab")
 
         campaign_digits = reader.digits("campaignId")
         campaign_id = int(campaign_digits) if campaign_digits else 0
         if campaign_id and campaign_id in seen_ids:
-            reader.error("campaignId", f"campaign {campaign_id} is already listed in row {seen_ids[campaign_id]}")
+            first_row, first_customer = seen_ids[campaign_id]
+            if first_customer and customer_id and first_customer != customer_id:
+                # Campaign IDs are unique across Google Ads, so one of the two
+                # rows names the wrong account. Hold both accounts' syncs.
+                reader.error(
+                    "campaignId",
+                    f"campaign {campaign_id} is already listed in row {first_row} under customer "
+                    f"{first_customer}; a campaign belongs to one account",
+                    also_customers=(first_customer,),
+                )
+            else:
+                reader.error("campaignId", f"campaign {campaign_id} is already listed in row {first_row}")
         elif campaign_id:
-            seen_ids[campaign_id] = reader.row
+            seen_ids[campaign_id] = (reader.row, customer_id or "")
 
         city = reader.text("city", required=True)
         if city and city not in known_cities:
@@ -599,8 +656,8 @@ def parse_sheet(tabs: Dict[str, Optional[List[List[Any]]]], known_cities: Set[st
 
     Returns:
         The parsed configuration. Check ``errors`` before using it: rows with
-        errors are excluded, and the sync refuses to write anything if there
-        is at least one error.
+        errors are excluded, and a sync refuses to write anything if at least
+        one error concerns it (see Issue.applies_to).
     """
     issues: List[Issue] = []
     accounts = _parse_accounts(tabs.get(ACCOUNTS_TAB), issues)
@@ -621,6 +678,7 @@ def parse_sheet(tabs: Dict[str, Optional[List[List[Any]]]], known_cities: Set[st
                     "City",
                     f"{campaign.city} has no {', '.join(unset)} in the {CITIES_TAB} tab; "
                     "the playbook default applies",
+                    (campaign.customer_id,),
                 )
             )
 

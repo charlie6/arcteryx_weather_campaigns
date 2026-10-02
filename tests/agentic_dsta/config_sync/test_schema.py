@@ -191,3 +191,76 @@ class TestValidationErrors:
             tabs(cities=[city_row(), city_row(City="Toronto ON", **{"Sunny min hours": -1})]), CITIES
         )
         assert [e.row for e in config.errors] == [3]
+
+
+OTHER = "1112223333"
+
+
+class TestAccountScoping:
+    """Each issue records the account(s) it blocks; see Issue.applies_to."""
+
+    def test_applies_to(self):
+        scoped = schema.Issue(schema.ERROR, schema.CAMPAIGNS_TAB, 3, "City", "x", ("5341114500",))
+        shared = schema.Issue(schema.ERROR, schema.CITIES_TAB, 2, "City", "x")
+        assert scoped.applies_to(None) and scoped.applies_to("5341114500")
+        assert not scoped.applies_to(OTHER)
+        assert shared.applies_to(None) and shared.applies_to(OTHER)
+
+    def test_row_issues_belong_to_the_rows_account(self):
+        config = schema.parse_sheet(
+            tabs(
+                accounts=[account_row(), account_row(**{"Customer ID": OTHER, "Timezone": "Vancouver"})],
+                campaigns=[
+                    campaign_row(),
+                    campaign_row(**{"Customer ID": OTHER, "Campaign ID": 42, "City": "Nowhere"}),
+                ],
+            ),
+            CITIES,
+        )
+        columns = {(e.tab, e.column) for e in config.errors}
+        assert (schema.ACCOUNTS_TAB, "Timezone") in columns
+        assert (schema.CAMPAIGNS_TAB, "City") in columns
+        assert all(e.customer_ids == (OTHER,) for e in config.errors), messages(config)
+        assert not [e for e in config.errors if e.applies_to("5341114500")]
+
+    def test_shared_tabs_and_unreadable_customer_ids_concern_every_account(self):
+        config = schema.parse_sheet(
+            tabs(
+                campaigns=[campaign_row(), campaign_row(**{"Customer ID": "534-111-450", "Campaign ID": 42})],
+                cities=[city_row(**{"Cold below C": 90})],
+            ),
+            CITIES,
+        )
+        assert {e.tab for e in config.errors} == {schema.CAMPAIGNS_TAB, schema.CITIES_TAB}, messages(config)
+        assert all(e.customer_ids == () and e.applies_to(OTHER) for e in config.errors)
+
+    def test_missing_tab_concerns_every_account(self):
+        sheet = tabs()
+        sheet[schema.CAMPAIGNS_TAB] = []
+        config = schema.parse_sheet(sheet, CITIES)
+        assert config.errors and all(e.applies_to(OTHER) for e in config.errors)
+
+    def test_campaign_under_two_accounts_blocks_both(self):
+        config = schema.parse_sheet(
+            tabs(
+                accounts=[account_row(), account_row(**{"Customer ID": OTHER})],
+                campaigns=[campaign_row(), campaign_row(**{"Customer ID": OTHER})],
+            ),
+            CITIES,
+        )
+        assert len(config.errors) == 1, messages(config)
+        error = config.errors[0]
+        assert "already listed in row 2 under customer 5341114500" in error.message
+        assert set(error.customer_ids) == {OTHER, "5341114500"}
+        assert not error.applies_to("4445556666")
+
+    def test_duplicate_within_an_account_is_scoped_to_it(self):
+        config = schema.parse_sheet(tabs(campaigns=[campaign_row(), campaign_row()]), CITIES)
+        assert [(e.message, e.customer_ids) for e in config.errors] == [
+            ("campaign 24252893412 is already listed in row 2", ("5341114500",))
+        ]
+
+    def test_missing_threshold_warning_names_the_campaigns_account(self):
+        config = schema.parse_sheet(tabs(cities=[city_row(**{"Rain rate mm/h": ""})]), CITIES)
+        warnings = [w for w in config.warnings if "playbook default applies" in w.message]
+        assert [w.customer_ids for w in warnings] == [("5341114500",)]

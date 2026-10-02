@@ -235,8 +235,25 @@ class SyncPlan:
 
     @property
     def errors(self) -> List[schema.Issue]:
-        """Blocking validation errors."""
-        return [i for i in self.issues if i.severity == schema.ERROR]
+        """Validation errors that block this sync.
+
+        A sync limited to one account (every scheduled run) is blocked only by
+        errors in that account's rows and by errors that concern every account
+        (Cities rows, tab problems, unreadable Customer IDs). A sync of every
+        account is blocked by any error.
+        """
+        return [
+            i for i in self.issues
+            if i.severity == schema.ERROR and i.applies_to(self.customer_filter)
+        ]
+
+    @property
+    def other_account_errors(self) -> List[schema.Issue]:
+        """Errors in other accounts' rows: reported, but this sync goes ahead."""
+        return [
+            i for i in self.issues
+            if i.severity == schema.ERROR and not i.applies_to(self.customer_filter)
+        ]
 
     @property
     def conflicts(self) -> List[BudgetAction]:
@@ -253,8 +270,9 @@ class SyncPlan:
         lines = [f"Config sheet sync plan {self.sync_id}"]
         if self.customer_filter:
             lines.append(f"  scope: customer {self.customer_filter} (cities: all)")
+        other = set(self.other_account_errors)
         for issue in self.issues:
-            lines.append(f"  {issue}")
+            lines.append(f"  {describe_other_account_error(issue) if issue in other else issue}")
         if self.errors:
             lines.append(f"  {len(self.errors)} error(s): NOTHING will be written.")
             return "\n".join(lines)
@@ -268,9 +286,26 @@ class SyncPlan:
         return "\n".join(lines)
 
 
+def describe_other_account_error(issue: schema.Issue) -> str:
+    """Formats an error from another account's rows for a scoped sync's report.
+
+    Args:
+        issue: An error that does not concern the current sync.
+
+    Returns:
+        The issue text, marked as not blocking this sync.
+    """
+    return f"{issue} (customer {', '.join(issue.customer_ids)} only; does not block this sync)"
+
+
 @dataclasses.dataclass
 class SyncResult:
-    """Outcome of applying (or attempting) a sync."""
+    """Outcome of applying (or attempting) a sync.
+
+    Attributes:
+        other_account_errors: Errors in other accounts' rows (scoped syncs
+            only). They did not stop this sync but still need fixing.
+    """
 
     sync_id: str
     outcome: str
@@ -280,11 +315,16 @@ class SyncResult:
     conflicts: int = 0
     errors: List[str] = dataclasses.field(default_factory=list)
     plan: Optional[SyncPlan] = None
+    other_account_errors: List[str] = dataclasses.field(default_factory=list)
 
     @property
     def needs_attention(self) -> bool:
         """True when an operator should look at the sheet or the logs."""
-        return self.outcome in (OUTCOME_INVALID, OUTCOME_ERROR, OUTCOME_PARTIAL) or self.conflicts > 0
+        return (
+            self.outcome in (OUTCOME_INVALID, OUTCOME_ERROR, OUTCOME_PARTIAL)
+            or self.conflicts > 0
+            or bool(self.other_account_errors)
+        )
 
 
 @dataclasses.dataclass
@@ -688,10 +728,12 @@ def build_plan(
         budgets: Reads live budgets. None skips budget syncing entirely.
         customer_filter: Restrict accounts and campaigns to one customer.
             Cities are always synced because they are shared by all accounts.
+            Errors in other accounts' rows do not block a filtered plan; they
+            are kept in ``issues`` and reported as ``other_account_errors``.
         sync_id: Override the generated id (tests).
 
     Returns:
-        The SyncPlan. If it has errors it contains no writes.
+        The SyncPlan. If it has (blocking) errors it contains no writes.
     """
     plan = SyncPlan(sync_id=sync_id or new_sync_id(), customer_filter=customer_filter, issues=list(sheet.issues))
     if customer_filter and customer_filter not in sheet.accounts and not plan.errors:
@@ -699,6 +741,7 @@ def build_plan(
             schema.Issue(
                 schema.WARNING, schema.ACCOUNTS_TAB, 0, "",
                 f"customer {customer_filter} is not in the sheet; its account and campaigns were not synced",
+                (customer_filter,),
             )
         )
     if plan.errors:
@@ -728,7 +771,9 @@ def build_plan(
                 schema.Issue(
                     schema.WARNING, schema.ACCOUNTS_TAB, account.row, "Customer ID",
                     f"CustomerInstructions/{customer_id} does not exist, so runs for this account abort. "
-                    "Seed it with upload_config.py.",
+                    f"Copy it from a working account: sync_config_sheet.py seed-account "
+                    f"--customer_id {customer_id} --from_customer_id <existing account>.",
+                    (customer_id,),
                 )
             )
         if existing == desired:
@@ -812,7 +857,8 @@ def apply_plan(
     dry_run = is_dry_run() if dry_run is None else dry_run
     now = now or datetime.datetime.now(datetime.timezone.utc)
     result = SyncResult(sync_id=plan.sync_id, outcome=OUTCOME_NOOP, source=source, plan=plan,
-                        conflicts=len(plan.conflicts))
+                        conflicts=len(plan.conflicts),
+                        other_account_errors=[describe_other_account_error(i) for i in plan.other_account_errors])
     if plan.errors:
         result.outcome = OUTCOME_INVALID
         result.errors = [str(i) for i in plan.errors]
@@ -949,11 +995,13 @@ def _write_state(state_ref: Any, action: BudgetAction) -> None:
 def log_result(result: SyncResult, customer_id: Optional[str] = None) -> None:
     """Emits the config_sync monitoring event for a sync."""
     level = logging.ERROR if result.outcome in (OUTCOME_INVALID, OUTCOME_ERROR, OUTCOME_PARTIAL) else (
-        logging.WARNING if result.conflicts else logging.INFO
+        logging.WARNING if result.conflicts or result.other_account_errors else logging.INFO
     )
     details = "; ".join(result.errors[:5])
     if result.plan and result.plan.conflicts:
         details = "; ".join(filter(None, [details] + [str(a) for a in result.plan.conflicts[:5]]))
+    if result.other_account_errors:
+        details = "; ".join(filter(None, [details] + result.other_account_errors[:5]))
     logger.log(
         level,
         "Config sheet sync %s (%s): outcome=%s, changes=%d, budget pushes=%d, conflicts=%d%s",
@@ -969,32 +1017,43 @@ def log_result(result: SyncResult, customer_id: Optional[str] = None) -> None:
             budget_pushes=result.budget_pushes,
             conflicts=result.conflicts,
             error_count=len(result.errors),
+            other_account_error_count=len(result.other_account_errors),
             needs_attention=str(result.needs_attention).lower(),
         ),
     )
 
 
 def append_sync_log(service: Any, spreadsheet_id: str, result: SyncResult,
-                    now: Optional[datetime.datetime] = None) -> None:
+                    now: Optional[datetime.datetime] = None,
+                    customer_id: Optional[str] = None) -> None:
     """Appends one row to the sheet's SyncLog tab. Best effort.
 
     Failure (no edit access, tab missing) is logged and otherwise ignored:
     the authoritative record is ConfigChangeLog in Firestore.
+
+    Args:
+        service: A Sheets API v4 service.
+        spreadsheet_id: The configuration spreadsheet id.
+        result: The sync outcome.
+        now: Override the current time (tests).
+        customer_id: The account the sync was limited to, shown in the Source
+            column. Defaults to the plan's customer filter.
     """
-    if result.outcome == OUTCOME_NOOP and not result.conflicts:
+    if result.outcome == OUTCOME_NOOP and not result.conflicts and not result.other_account_errors:
         return  # Keep the tab readable: twice-daily no-op syncs add nothing.
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    details: List[str] = list(result.errors[:10])
+    scope = customer_id or (result.plan.customer_filter if result.plan else None)
+    details: List[str] = list(result.errors[:10]) + result.other_account_errors[:10]
     if result.plan:
         details += [str(c) for c in result.plan.changes[:20]]
         details += [str(a) for a in result.plan.budget_actions if a.action != BUDGET_RECORD][:20]
     row = [
         now.strftime("%Y-%m-%d %H:%M:%S"),
-        result.source,
+        f"{result.source} ({scope})" if scope else result.source,
         result.outcome,
         result.changes + result.budget_pushes,
         result.conflicts,
-        len(result.errors),
+        len(result.errors) + len(result.other_account_errors),
         "\n".join(details)[:45000],
     ]
     try:
@@ -1069,8 +1128,49 @@ def run_sheet_sync(
         result = SyncResult(sync_id=new_sync_id(), outcome=OUTCOME_ERROR, source=source, errors=[str(err)[:500]])
     log_result(result, customer_id)
     if service is not None:
-        append_sync_log(service, spreadsheet_id, result)
+        append_sync_log(service, spreadsheet_id, result, customer_id=customer_id)
     return result
+
+
+def copy_customer_instructions(db: Any, source_customer_id: str, customer_id: str) -> bool:
+    """Seeds a new account's CustomerInstructions from an existing account.
+
+    Runs abort without CustomerInstructions/{customer_id}, and the sheet sync
+    does not create it. The instruction text is the same for every account,
+    so copying a working account's document is the quickest way to add one.
+    An existing document is never overwritten.
+
+    Args:
+        db: A google.cloud.firestore.Client.
+        source_customer_id: The account to copy from.
+        customer_id: The new account.
+
+    Returns:
+        True if the document was created, False if it already existed.
+
+    Raises:
+        ValueError: If the IDs are the same or the source has no instruction.
+    """
+    from google.api_core import exceptions as gexc  # pylint: disable=import-outside-toplevel
+
+    source_customer_id = str(source_customer_id).replace("-", "").strip()
+    customer_id = str(customer_id).replace("-", "").strip()
+    if source_customer_id == customer_id:
+        raise ValueError("source and target customer IDs are the same")
+    snap = db.collection("CustomerInstructions").document(source_customer_id).get()
+    data = (snap.to_dict() or {}) if snap.exists else {}
+    if not data.get("instruction"):
+        raise ValueError(f"CustomerInstructions/{source_customer_id} does not exist or has no instruction")
+    try:
+        db.collection("CustomerInstructions").document(customer_id).create(data)
+    except gexc.AlreadyExists:
+        logger.info("CustomerInstructions/%s already exists; left unchanged", customer_id)
+        return False
+    logger.info(
+        "Audit: created CustomerInstructions/%s from CustomerInstructions/%s",
+        customer_id, source_customer_id, extra={"customer_id": customer_id},
+    )
+    return True
 
 
 # --- Export (bootstrap the sheet from Firestore) -------------------------------

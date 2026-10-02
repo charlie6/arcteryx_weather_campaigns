@@ -22,9 +22,9 @@ locals {
   # Log-based counters shown as stacked bars, summed per hour.
   counter_chart_specs = {
     runs = {
-      title  = "Runs by outcome"
+      title  = "Runs by account and outcome"
       metric = google_logging_metric.runs.name
-      group  = ["metric.label.\"usecase\"", "metric.label.\"outcome\""]
+      group  = ["metric.label.\"usecase\"", "metric.label.\"customer_id\"", "metric.label.\"outcome\""]
     }
     mutations = {
       title  = "Ad changes by action (dry_run=true means suppressed)"

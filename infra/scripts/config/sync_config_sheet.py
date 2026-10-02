@@ -34,10 +34,16 @@ edits before the next run picks them up.
     python3 infra/scripts/config/sync_config_sheet.py apply \\
       --sheet_id SHEET_ID --project_id PROJECT --database DB
 
+    # Adding an account: copy a working account's CustomerInstructions
+    # (create-only; no sheet needed). Runs abort without this document.
+    python3 infra/scripts/config/sync_config_sheet.py seed-account \\
+      --customer_id NEW_ID --from_customer_id EXISTING_ID --project_id PROJECT --database DB
+
 ``plan`` and ``apply`` read live Google Ads budgets, which needs the same Google
 Ads credentials as the service (environment variables or Secret Manager). Pass
 ``--no_budgets`` to sync only Firestore configuration. ``apply`` honours
-ADSTA_DRY_RUN for budget pushes.
+ADSTA_DRY_RUN for budget pushes. With ``--customer_id``, errors in other
+accounts' rows are reported but do not block, exactly like a scheduled run.
 """
 
 import argparse
@@ -86,7 +92,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     a sync applied with conflicts or failed budget pushes.
   """
   parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-  parser.add_argument("command", choices=["export", "plan", "apply"])
+  parser.add_argument("command", choices=["export", "plan", "apply", "seed-account"])
   parser.add_argument(
       "--sheet_id",
       default=os.environ.get(sync.CONFIG_SHEET_ID_ENV),
@@ -98,7 +104,13 @@ def main(argv: Optional[List[str]] = None) -> int:
   parser.add_argument(
       "--database", default=os.environ.get("FIRESTORE_DB"), help="Firestore database name"
   )
-  parser.add_argument("--customer_id", help="plan/apply: limit accounts and campaigns to one customer")
+  parser.add_argument(
+      "--customer_id",
+      help="plan/apply: limit accounts and campaigns to one customer. seed-account: the new account",
+  )
+  parser.add_argument(
+      "--from_customer_id", help="seed-account: existing account whose CustomerInstructions are copied"
+  )
   parser.add_argument(
       "--no_budgets", action="store_true", help="plan/apply: skip reading and pushing Google Ads budgets"
   )
@@ -111,9 +123,24 @@ def main(argv: Optional[List[str]] = None) -> int:
   parser.add_argument("--force", action="store_true", help="export: overwrite tabs that already have data")
   args = parser.parse_args(argv)
 
+  customer_id = args.customer_id.replace("-", "").strip() if args.customer_id else None
+  if args.command == "seed-account":
+    if not customer_id or not args.from_customer_id:
+      parser.error("seed-account needs --customer_id (new account) and --from_customer_id (existing account)")
+    try:
+      db = _firestore_client(args.project_id, args.database)
+      created = sync.copy_customer_instructions(db, args.from_customer_id, customer_id)
+    except Exception as err:  # pylint: disable=broad-except
+      logger.error("Failed: %s", err)
+      return 1
+    logger.info(
+        "CustomerInstructions/%s %s", customer_id,
+        "created" if created else "already exists (left unchanged)",
+    )
+    return 0
+
   if not args.sheet_id:
     parser.error("--sheet_id is required (or set CONFIG_SHEET_ID)")
-  customer_id = args.customer_id.replace("-", "").strip() if args.customer_id else None
 
   try:
     db = _firestore_client(args.project_id, args.database)
@@ -134,7 +161,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     result = sync.apply_plan(plan, db, budgets, source="cli")
     sync.log_result(result, customer_id)
-    sync.append_sync_log(service, args.sheet_id, result)
+    sync.append_sync_log(service, args.sheet_id, result, customer_id=customer_id)
     print(
         f"Outcome: {result.outcome}; {result.changes} config change(s), "
         f"{result.budget_pushes} budget push(es), {result.conflicts} conflict(s)."

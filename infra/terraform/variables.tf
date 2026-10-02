@@ -353,6 +353,45 @@ variable "googleads_customer_id" {
   default     = ""
 }
 
+variable "googleads_additional_customers" {
+  description = <<-EOT
+    More Google Ads accounts to run from this deployment, keyed by customer ID
+    (10 digits; dashes are ignored). Every account must be reachable through
+    the MCC in google_ads_login_customer_id with the same OAuth credentials.
+    Each account gets its own scheduler job (<resource_prefix>-ga-<id>-job)
+    and its own missed-run alert. All fields are optional:
+      schedule         - cron; defaults to googleads_scheduler_schedule.
+                         Stagger accounts ~15 minutes apart so their runs
+                         don't overlap on one Cloud Run instance. Keep the
+                         account's "Runs per day" in the sheet in step.
+      time_zone        - defaults to sa_run_sse_scheduler_job_timezone.
+      heartbeat_window - missed-run alert window; defaults to
+                         monitoring_heartbeat_windows["GoogleAds"]. Raise it
+                         if the account runs less often.
+    Each account also needs its Accounts and Campaigns rows in the config
+    sheet and a CustomerInstructions document (sync_config_sheet.py
+    seed-account). Do not repeat googleads_customer_id here.
+  EOT
+  type = map(object({
+    schedule         = optional(string)
+    time_zone        = optional(string)
+    heartbeat_window = optional(string)
+  }))
+  default = {}
+  validation {
+    condition = alltrue([
+      for id in keys(var.googleads_additional_customers) : can(regex("^[0-9]{10}$", replace(id, "-", "")))
+    ])
+    error_message = "googleads_additional_customers keys must be 10-digit Google Ads customer IDs, e.g. \"1234567890\"."
+  }
+  validation {
+    condition = length(distinct([
+      for id in keys(var.googleads_additional_customers) : replace(id, "-", "")
+    ])) == length(var.googleads_additional_customers)
+    error_message = "googleads_additional_customers lists the same customer ID twice (with and without dashes). List each account once."
+  }
+}
+
 variable "sa360_customer_id" {
   description = "The SA360 customer ID for the scheduler job payload."
   type        = string
@@ -421,8 +460,10 @@ variable "monitoring_heartbeat_windows" {
   description = <<-EOT
     Map of usecase to how long without a completed run before the missed-run
     alert fires. Keep slightly above the gap between scheduled runs (the
-    default Google Ads cron runs every 12h, SA360 every 24h). Remove a key to
-    disable that heartbeat, e.g. when SA360 is not used.
+    default Google Ads cron runs every 12h, SA360 every 24h). The GoogleAds
+    window applies to each Google Ads account separately (one alert per
+    account; googleads_additional_customers can override it per account).
+    Remove a key to disable that heartbeat, e.g. when SA360 is not used.
   EOT
   type        = map(string)
   default = {

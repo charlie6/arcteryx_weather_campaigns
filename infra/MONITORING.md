@@ -27,14 +27,14 @@ Slack, PagerDuty and Google Chat channels can be created in the console and atta
 | Event | Emitted when | Key labels |
 |---|---|---|
 | `run_started` | A run begins | `customer_id`, `usecase` |
-| `run_completed` | Once per run, always (heartbeat) | `outcome`, `reason`, `run_id`, `total_duration_s` |
+| `run_completed` | Once per run, always (heartbeat) | `customer_id`, `usecase`, `outcome`, `reason`, `run_id`, `total_duration_s` |
 | `playbook_failed` | A playbook execution raised | `campaign_id`, `playbook_id`, `error_class` |
 | `mutation_applied` | Google Ads / SA360 write (or dry-run suppression) | `action`, `dry_run`, `campaign_id`, `tool_args` |
 | `tool_error` | A tool returned an error or raised | `dependency`, `error_class`, `tool`, `mutating` |
 | `model_error` | A Gemini call failed | `error_class` |
-| `change_guard_exceeded` | Budget **increases** in a run exceeded the cap (reverts to normal are not counted) | `run_id`, `budget_changes`, `cap` |
+| `change_guard_exceeded` | Budget **increases** in a run exceeded the cap (reverts to normal are not counted) | `run_id`, `customer_id`, `budget_changes`, `cap` |
 | `campaign_name_mismatch` | A campaign was skipped because its live name doesn't contain `Campaign name contains`, or couldn't be read. Nothing ran for it | `campaign_id`, `reason` (`mismatch`, `not_found`, `lookup_failed`), `expected_name_contains`, `actual_name` |
-| `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `conflicts`, `needs_attention` |
+| `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `customer_id` (the run's account), `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `conflicts`, `error_count`, `other_account_error_count`, `needs_attention` |
 
 `outcome` is one of `success`, `partial`, `failed`, `aborted`, `noop`. A run that skipped
 campaigns with the name guard ends `partial` with `reason="campaigns_skipped"`.
@@ -48,17 +48,25 @@ records the attempt as failed. Scheduler retries are disabled, so this never re-
 
 | Severity | Alert | Fires when |
 |---|---|---|
-| Critical | Missed runs (per usecase) | No `run_completed` within the heartbeat window |
+| Critical | Missed runs (one per Google Ads account, plus SA360) | No `run_completed` for that account within the heartbeat window |
 | Critical | Scheduled run failed | Cloud Scheduler attempt ends in error (5xx, timeout) |
 | Critical | Change volume guard exceeded | `change_guard_exceeded` |
 | Critical | Authentication failure | Any event with `error_class="auth"` (for example, an expired refresh token) |
 | Warning | Run partially failed | `outcome="partial"` (including `campaigns_skipped`) or `reason="no_runnable_playbooks"` |
 | Warning | Dependency error spike | More than 10 tool/model errors per hour for one dependency |
 | Warning | Run near timeout | Run longer than 80% of the scheduler attempt deadline |
-| Warning | Config sheet needs attention | `config_sync` with `needs_attention=true`: sheet invalid or unreadable, a budget push failed, or a budget conflict (see [CONFIG_SHEET.md](CONFIG_SHEET.md)) |
+| Warning | Config sheet needs attention | `config_sync` with `needs_attention=true`: sheet invalid or unreadable, another account's rows invalid, a budget push failed, or a budget conflict (see [CONFIG_SHEET.md](CONFIG_SHEET.md)) |
 
-Each alert includes a runbook in its notification. The missed-run alert fires after a fresh
-deploy until the first scheduled run completes.
+Each alert includes a runbook in its notification, and the account-specific ones name the
+customer ID. A Google Ads account's missed-run alert fires after a fresh deploy, or after the
+account is added (`googleads_additional_customers`), until that account's first run completes.
+**Force run** its scheduler job to clear it.
+
+Upgrading from a single-account deployment replaces "Missed runs (GoogleAds)" with a
+per-account alert such as "Missed runs (GoogleAds 5341114500)" and adds a `customer_id` label
+to the `adsta_runs` metric. Earlier points carry no `customer_id`, so the new alert fires once
+after the deploy; force run the job right after deploying. The dashboard's runs chart groups
+by account.
 
 ## Useful log queries
 

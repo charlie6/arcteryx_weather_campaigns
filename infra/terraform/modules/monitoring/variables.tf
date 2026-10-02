@@ -53,13 +53,26 @@ variable "heartbeat_windows" {
     Map of usecase ("GoogleAds" / "SA360") to the PromQL range after which a
     missing run_completed event raises the missed-run alert, e.g. "13h".
     Set it a little above the gap between scheduled runs. Remove a usecase
-    to disable its heartbeat (for example if SA360 is not in use).
+    to disable its heartbeat (for example if SA360 is not in use). The
+    GoogleAds entry is ignored when googleads_customer_heartbeats is set.
   EOT
   type        = map(string)
   default = {
     GoogleAds = "13h"
     SA360     = "25h"
   }
+}
+
+variable "googleads_customer_heartbeats" {
+  description = <<-EOT
+    Map of Google Ads customer ID to its missed-run window, e.g.
+    { "5341114500" = "13h" }. One alert is created per account (filtered on
+    the customer_id label of adsta_runs), replacing the usecase-level
+    GoogleAds heartbeat, so one account that stops running is detected while
+    the others keep running. Empty = the usecase-level heartbeat is used.
+  EOT
+  type        = map(string)
+  default     = {}
 }
 
 variable "run_duration_warning_seconds" {
