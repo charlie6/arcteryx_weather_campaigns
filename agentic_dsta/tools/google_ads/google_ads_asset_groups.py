@@ -46,6 +46,7 @@ from google.protobuf import field_mask_pb2
 
 from agentic_dsta.core.dry_run import dry_run_response, is_dry_run
 from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client
+from agentic_dsta.tools.google_ads.google_ads_retry import google_ads_service
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def _fetch_asset_group(
   Returns:
       A dictionary of asset group fields, or None if it does not exist.
   """
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
       SELECT
         asset_group.id,
@@ -180,7 +181,7 @@ def _fetch_asset_groups_by_name(
       A list of matching asset group records. Empty when nothing matches.
       More than one entry means the pair is ambiguous.
   """
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
       SELECT
         asset_group.id,
@@ -391,7 +392,7 @@ def list_google_ads_asset_groups(
   if not client:
     return {"success": False, "error": "Failed to get Google Ads client."}
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
       SELECT
         asset_group.id,

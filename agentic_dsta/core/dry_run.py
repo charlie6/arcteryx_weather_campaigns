@@ -31,22 +31,69 @@ mutations and SA360 bulk sheet edits. Firestore is ADSTA's own state store
 and shadow-mode operation needs it, so it is not suppressed. This mirrors
 LOG_ONLY in the Apps Script this service replaces, which likewise blocks
 account changes while still advancing its state sheet.
+
+Dry run has two sources, and either one suppresses a write:
+
+* the deployment: ``ADSTA_DRY_RUN`` covers every account and campaign;
+* the campaign: the decision agent wraps one campaign's playbooks in
+  ``campaign_dry_run`` when its config entry has ``dryRun: true`` (the
+  config sheet's "Dry run" column).
+
+The campaign flag lives in a context variable rather than in global state
+because campaigns run in parallel worker threads. Each thread has its own
+context, ``asyncio.run`` copies it into the playbook's event loop, and ADK
+copies it again into the thread that runs each synchronous tool, so the flag
+reaches exactly that campaign's tool calls and no other campaign's.
 """
 
+import contextlib
+import contextvars
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Iterator, Optional
 
 logger = logging.getLogger(__name__)
 
 # Set to a truthy value to suppress every advertising platform write.
 DRY_RUN_ENV_VAR = "ADSTA_DRY_RUN"
 
+# Values of dry_run_source().
+SOURCE_DEPLOYMENT = "deployment"
+SOURCE_CAMPAIGN = "campaign"
+
 _TRUTHY_VALUES = frozenset({"1", "true", "t", "yes", "y", "on"})
 
+# True while the current campaign runs in dry run. Set only through
+# campaign_dry_run(), which always restores the previous value.
+_CAMPAIGN_DRY_RUN: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "adsta_campaign_dry_run", default=False
+)
 
-def is_dry_run() -> bool:
-    """Reports whether dry run mode is currently enabled.
+
+def parse_flag(value: Any) -> bool:
+    """Interprets a dry run flag read from configuration.
+
+    The config sheet sync stores a real boolean, but a hand-edited Firestore
+    document may hold a string or a number. Unrecognised values count as
+    False, matching how ADSTA_DRY_RUN is parsed.
+
+    Args:
+        value: The stored value, for example True, "true", "Y" or 1.
+
+    Returns:
+        True if the value means "dry run".
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUTHY_VALUES
+    return False
+
+
+def deployment_dry_run() -> bool:
+    """Reports whether ADSTA_DRY_RUN puts the whole deployment in dry run.
 
     Read at call time rather than import time so that tests, and any future
     per-request override, can change the setting without reloading modules.
@@ -55,6 +102,55 @@ def is_dry_run() -> bool:
         True if the dry run environment variable holds a truthy value.
     """
     return os.environ.get(DRY_RUN_ENV_VAR, "").strip().lower() in _TRUTHY_VALUES
+
+
+def dry_run_source() -> Optional[str]:
+    """Names what put the current call in dry run, if anything.
+
+    Returns:
+        SOURCE_DEPLOYMENT when ADSTA_DRY_RUN is set (it takes precedence),
+        SOURCE_CAMPAIGN inside a campaign_dry_run(True) scope, else None.
+    """
+    if deployment_dry_run():
+        return SOURCE_DEPLOYMENT
+    if _CAMPAIGN_DRY_RUN.get():
+        return SOURCE_CAMPAIGN
+    return None
+
+
+def is_dry_run() -> bool:
+    """Reports whether advertising platform writes must be suppressed now.
+
+    This is the single check every mutating tool makes. It is True when the
+    deployment is in dry run (ADSTA_DRY_RUN) or when the call belongs to a
+    campaign running in dry run (see campaign_dry_run).
+
+    Returns:
+        True if the current write must not reach the platform.
+    """
+    return dry_run_source() is not None
+
+
+@contextlib.contextmanager
+def campaign_dry_run(enabled: bool) -> Iterator[None]:
+    """Scopes the campaign-level dry run flag to a block of code.
+
+    The previous value is restored on exit, even if the block raises. That
+    matters because worker threads are reused: a flag left set would carry
+    over to the next campaign that thread processes.
+
+    Args:
+        enabled: Whether the campaign runs in dry run. False still opens a
+            scope, which shields the block from any value set further out.
+
+    Yields:
+        None.
+    """
+    token = _CAMPAIGN_DRY_RUN.set(bool(enabled))
+    try:
+        yield
+    finally:
+        _CAMPAIGN_DRY_RUN.reset(token)
 
 
 def dry_run_response(action: str, details: Dict[str, Any]) -> Dict[str, Any]:
@@ -73,14 +169,22 @@ def dry_run_response(action: str, details: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         A result dictionary describing the suppressed mutation.
     """
+    source = dry_run_source() or SOURCE_DEPLOYMENT
     logger.warning(
-        "DRY RUN: suppressed %s",
+        "DRY RUN (%s): suppressed %s",
+        source,
         action,
-        extra={"dry_run": True, "action_suppressed": action, "would_have": details},
+        extra={
+            "dry_run": True,
+            "dry_run_source": source,
+            "action_suppressed": action,
+            "would_have": details,
+        },
     )
     return {
         "success": False,
         "dry_run": True,
+        "dry_run_source": source,
         "action_suppressed": action,
         "message": (
             f"DRY RUN: '{action}' was NOT applied. No change was made to the "

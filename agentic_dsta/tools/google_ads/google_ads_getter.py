@@ -22,6 +22,7 @@ import google.ads.googleads.client
 from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf.json_format import MessageToDict
 from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client
+from agentic_dsta.tools.google_ads.google_ads_retry import google_ads_service
 import logging
 
 
@@ -46,7 +47,7 @@ def get_google_ads_campaign_details(customer_id: str, campaign_id: str) -> Dict[
   if not client:
     raise RuntimeError("Failed to get Google Ads client.")
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
 
   query = f"""
         SELECT
@@ -202,7 +203,7 @@ def get_google_ads_geo_targets(customer_id: str, campaign_id: str) -> Dict[str, 
   if not client:
     raise RuntimeError("Failed to get Google Ads client.")
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
 
   # Get campaign-level geo targets
   campaign_query = f"""
@@ -278,7 +279,7 @@ def list_google_ads_shared_budgets(
   if not client:
     raise RuntimeError("Failed to get Google Ads client.")
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   
   where_clause = "campaign_budget.status = 'ENABLED'"
   if budget_resource_name:
@@ -347,7 +348,7 @@ def get_google_ads_campaigns_by_bidding_strategy(
   if not client:
     raise RuntimeError("Failed to get Google Ads client.")
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
         SELECT
           campaign.id,
@@ -405,7 +406,7 @@ def list_google_ads_portfolio_bidding_strategies(customer_id: str) -> Dict[str, 
   if not client:
     raise RuntimeError("Failed to get Google Ads client.")
 
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = """
         SELECT
           bidding_strategy.id,

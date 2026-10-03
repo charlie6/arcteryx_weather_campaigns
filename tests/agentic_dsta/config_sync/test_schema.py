@@ -56,6 +56,7 @@ def campaign_row(**overrides: Any) -> List[Any]:
         "Normal daily budget": 10,
         "Budget bump %": 50,
         "Max daily budget": "$20.00",
+        "Dry run": "",
     }
     values.update(overrides)
     return [values[h] for h in CAMPAIGN_HEADER]
@@ -191,6 +192,46 @@ class TestValidationErrors:
             tabs(cities=[city_row(), city_row(City="Toronto ON", **{"Sunny min hours": -1})]), CITIES
         )
         assert [e.row for e in config.errors] == [3]
+
+
+class TestDryRunColumn:
+    def _dry_run(self, sheet: Dict[str, List[List[Any]]]) -> Any:
+        config = schema.parse_sheet(sheet, CITIES)
+        assert not config.errors, messages(config)
+        return config.campaigns[0].dry_run
+
+    def test_y_n_and_blank(self):
+        assert self._dry_run(tabs(campaigns=[campaign_row(**{"Dry run": "Y"})])) is True
+        assert self._dry_run(tabs(campaigns=[campaign_row(**{"Dry run": "yes"})])) is True
+        assert self._dry_run(tabs(campaigns=[campaign_row(**{"Dry run": "N"})])) is False
+        assert self._dry_run(tabs(campaigns=[campaign_row(**{"Dry run": ""})])) is False
+
+    def test_blank_cell_trimmed_by_the_sheets_api_is_live(self):
+        # The Sheets API drops trailing blank cells, and Dry run is the last column.
+        row = campaign_row()
+        assert CAMPAIGN_HEADER[-1] == "Dry run"
+        assert self._dry_run(tabs(campaigns=[row[:-1]])) is False
+
+    def test_sheet_without_the_column_leaves_it_unset(self):
+        # None, not False: the sync then keeps the stored setting.
+        sheet = tabs()
+        sheet[schema.CAMPAIGNS_TAB] = [CAMPAIGN_HEADER[:-1], campaign_row()[:-1]]
+        assert self._dry_run(sheet) is None
+
+    def test_header_is_matched_loosely(self):
+        sheet = tabs(campaigns=[campaign_row(**{"Dry run": "Y"})])
+        sheet[schema.CAMPAIGNS_TAB][0] = CAMPAIGN_HEADER[:-1] + ["DRY_RUN"]
+        assert self._dry_run(sheet) is True
+
+    def test_bad_value_is_an_error(self):
+        config = schema.parse_sheet(tabs(campaigns=[campaign_row(**{"Dry run": "later"})]), CITIES)
+        assert any(e.column == "Dry run" and "not Y or N" in str(e) for e in config.errors), messages(config)
+        assert not config.campaigns
+
+    def test_ignored_for_an_inactive_campaign(self):
+        config = schema.parse_sheet(tabs(campaigns=[campaign_row(Active="N", **{"Dry run": "Y"})]), CITIES)
+        assert not config.errors, messages(config)
+        assert any("ignored because Active is N" in str(w) for w in config.warnings)
 
 
 OTHER = "1112223333"

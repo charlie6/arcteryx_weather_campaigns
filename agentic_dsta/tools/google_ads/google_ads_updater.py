@@ -26,6 +26,7 @@ from google.ads.googleads.v22.enums.types.target_impression_share_location impor
 )
 from agentic_dsta.core.dry_run import dry_run_response, is_dry_run
 from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client
+from agentic_dsta.tools.google_ads.google_ads_retry import google_ads_service
 from agentic_dsta.tools.google_ads.google_ads_getter import get_google_ads_campaign_details
 from agentic_dsta.tools.google_ads.bidding_strategy_utils import validate_strategy_change
 import logging
@@ -457,7 +458,7 @@ def update_google_ads_campaign_budget(
     raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get the campaign's budget resource name.
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
         SELECT campaign.campaign_budget
         FROM campaign
@@ -561,7 +562,7 @@ def update_google_ads_campaign_geo_targets(
     raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get existing geo target criteria to remove them.
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
         SELECT campaign_criterion.resource_name
         FROM campaign_criterion
@@ -673,7 +674,7 @@ def update_google_ads_ad_group_geo_targets(
     raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get existing geo target criteria to remove them.
-  ga_service = client.get_service("GoogleAdsService")
+  ga_service = google_ads_service(client)
   query = f"""
         SELECT ad_group_criterion.resource_name
         FROM ad_group_criterion

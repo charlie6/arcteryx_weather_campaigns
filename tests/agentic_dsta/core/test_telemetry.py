@@ -140,6 +140,29 @@ def test_dry_run_mutation_is_audited_not_errored(caplog: pytest.LogCaptureFixtur
     assert not _events(caplog, telemetry.EVENT_TOOL_ERROR)
 
 
+def test_dry_run_audit_names_its_source(caplog: pytest.LogCaptureFixture) -> None:
+    callbacks = telemetry.make_agent_callbacks(RUN_CONTEXT)
+    with caplog.at_level(logging.INFO):
+        callbacks["after_tool_callback"](
+            tool=_tool("update_google_ads_campaign_budget"),
+            args={"campaign_id": "123"},
+            tool_context=None,
+            tool_response={"success": False, "dry_run": True, "dry_run_source": "campaign"},
+        )
+        callbacks["after_tool_callback"](
+            tool=_tool("update_google_ads_campaign_budget"),
+            args={"campaign_id": "123"},
+            tool_context=None,
+            tool_response={"success": True, "dry_run_source": "campaign"},  # ignored when live
+        )
+
+    suppressed, applied = _events(caplog, telemetry.EVENT_MUTATION_APPLIED)
+    assert (suppressed.dry_run, suppressed.dry_run_source) == ("true", "campaign")
+    assert "(dry_run=True, campaign)" in suppressed.getMessage()
+    assert applied.dry_run == "false"
+    assert not hasattr(applied, "dry_run_source")
+
+
 def test_failed_tool_emits_tool_error_with_class(caplog: pytest.LogCaptureFixture) -> None:
     callbacks = telemetry.make_agent_callbacks(RUN_CONTEXT)
     with caplog.at_level(logging.INFO):

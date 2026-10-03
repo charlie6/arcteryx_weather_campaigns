@@ -89,7 +89,9 @@ sa360_customer_id: "SA360_CUSTOMER_ID"
 # ADSTA_DRY_RUN is the log-only switch: any truthy value suppresses every Google
 # Ads mutation and SA360 sheet write at the point of the write, while Firestore
 # state and the ChangeLog still advance. Keep it on for the first validation run
-# against a live account, then remove it to go live.
+# against a live account, then remove it to go live. To keep only some
+# campaigns in log-only mode, leave it off and set their "Dry run" column to Y
+# in the configuration sheet (infra/CONFIG_SHEET.md).
 # CONFIG_SHEET_ID (optional) is the id of the configuration Google Sheet (the
 # long string in its URL). When set, every scheduled run first syncs the sheet's
 # Accounts, Campaigns and Cities tabs into Firestore. Share the sheet with the

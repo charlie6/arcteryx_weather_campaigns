@@ -23,7 +23,38 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import logging
 
+from agentic_dsta.core import dry_run
+
 logger = logging.getLogger(__name__)
+
+# The playbooks' audit log.
+CHANGE_LOG_COLLECTION = "ChangeLog"
+_LIVE_MODES = frozenset({"", "live"})
+
+
+def _mark_dry_run_mode(data: Dict[str, Any], merge: bool) -> Dict[str, Any]:
+    """Labels a ChangeLog row 'log-only' when it is written during a dry run.
+
+    The playbooks tell the model to record mode 'log-only' when a tool says a
+    write was suppressed. A run that changed nothing gets no such signal, so
+    its row would read 'live' even though the campaign is in dry run. Setting
+    the label in code keeps the audit trail exact. Other modes, such as
+    'skipped', are left alone, as is a merge that does not send a mode.
+
+    Args:
+        data: The row the model asked to write.
+        merge: Whether the write patches an existing row.
+
+    Returns:
+        A copy with mode 'log-only', or ``data`` unchanged.
+    """
+    source = dry_run.dry_run_source()
+    if source is None or (merge and "mode" not in data):
+        return data
+    if str(data.get("mode") or "").strip().lower() not in _LIVE_MODES:
+        return data
+    logger.info("ChangeLog row recorded as log-only (dry run: %s)", source)
+    return {**data, "mode": "log-only"}
 
 
 class FirestoreToolset(BaseToolset):
@@ -222,6 +253,8 @@ class FirestoreToolset(BaseToolset):
             A dictionary indicating success and the operation performed ('set' or 'merged').
         """
         logger.info("Setting document: %s/%s, merge: %s", collection, document_id, merge)
+        if collection == CHANGE_LOG_COLLECTION and isinstance(data, dict):
+            data = _mark_dry_run_mode(data, merge)
         client = self._get_client()
         try:
             doc_ref = client.collection(collection).document(document_id)

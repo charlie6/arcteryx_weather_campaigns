@@ -19,6 +19,9 @@ the mutation would be worse than none, so every case here asserts on
 whether the underlying service was called.
 """
 
+import asyncio
+import concurrent.futures
+import threading
 import unittest
 from unittest import mock
 
@@ -192,6 +195,194 @@ class TestCampaignStatusIsSuppressed(unittest.TestCase):
         "dry run must not issue the campaign mutation",
     )
     self.assertEqual(result["would_have"]["new_status"], "PAUSED")
+
+
+def _deployment_off():
+  """Builds an environment patch that turns the deployment dry run off."""
+  return _enabled("")
+
+
+class TestParseFlag(unittest.TestCase):
+  """A campaign's stored dryRun value, possibly hand-edited in Firestore."""
+
+  def test_truthy_values(self):
+    for value in (True, "true", "TRUE", " y ", "Y", "yes", "1", "on", 1, 2.5):
+      with self.subTest(value=value):
+        self.assertTrue(dry_run.parse_flag(value))
+
+  def test_falsy_and_unrecognised_values(self):
+    for value in (False, None, "", "false", "N", "no", "0", "off", "maybe", 0, 0.0, [], {}):
+      with self.subTest(value=value):
+        self.assertFalse(dry_run.parse_flag(value))
+
+
+class TestCampaignDryRun(unittest.TestCase):
+  """The campaign-level dry run scope."""
+
+  def test_off_by_default(self):
+    with _deployment_off():
+      self.assertFalse(dry_run.is_dry_run())
+      self.assertIsNone(dry_run.dry_run_source())
+
+  def test_scope_turns_it_on_then_restores(self):
+    with _deployment_off():
+      with dry_run.campaign_dry_run(True):
+        self.assertTrue(dry_run.is_dry_run())
+        self.assertEqual(dry_run.dry_run_source(), dry_run.SOURCE_CAMPAIGN)
+      self.assertFalse(dry_run.is_dry_run())
+
+  def test_live_scope_is_live(self):
+    with _deployment_off(), dry_run.campaign_dry_run(False):
+      self.assertFalse(dry_run.is_dry_run())
+
+  def test_deployment_takes_precedence(self):
+    """A live campaign is still dry run when the whole deployment is."""
+    with _enabled("true"):
+      with dry_run.campaign_dry_run(False):
+        self.assertTrue(dry_run.is_dry_run())
+        self.assertEqual(dry_run.dry_run_source(), dry_run.SOURCE_DEPLOYMENT)
+      with dry_run.campaign_dry_run(True):
+        self.assertEqual(dry_run.dry_run_source(), dry_run.SOURCE_DEPLOYMENT)
+
+  def test_inner_scope_shields_and_restores(self):
+    with _deployment_off(), dry_run.campaign_dry_run(True):
+      with dry_run.campaign_dry_run(False):
+        self.assertFalse(dry_run.is_dry_run())
+      self.assertTrue(dry_run.is_dry_run())
+
+  def test_restored_when_the_block_raises(self):
+    with _deployment_off():
+      with self.assertRaises(RuntimeError):
+        with dry_run.campaign_dry_run(True):
+          raise RuntimeError("playbook failed")
+      self.assertFalse(dry_run.is_dry_run())
+
+  def test_reused_worker_thread_does_not_inherit_the_flag(self):
+    """Campaigns share pool threads; one campaign's flag must not leak."""
+
+    def dry_campaign():
+      with dry_run.campaign_dry_run(True):
+        raise RuntimeError("playbook failed")
+
+    def next_campaign():
+      return dry_run.dry_run_source(), threading.get_ident()
+
+    with _deployment_off(), concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+      first = pool.submit(dry_campaign)
+      with self.assertRaises(RuntimeError):
+        first.result()
+      thread_before = pool.submit(threading.get_ident).result()
+      source, thread_after = pool.submit(next_campaign).result()
+
+    self.assertEqual(thread_before, thread_after)
+    self.assertIsNone(source)
+
+  def test_parallel_campaigns_are_isolated(self):
+    """Two campaigns running at once each see only their own flag."""
+    barrier = threading.Barrier(2, timeout=5)
+    seen = {}
+
+    def campaign(name, enabled):
+      with dry_run.campaign_dry_run(enabled):
+        barrier.wait()  # both scopes are open now
+        seen[name] = dry_run.dry_run_source()
+        barrier.wait()
+
+    with _deployment_off():
+      threads = [
+          threading.Thread(target=campaign, args=("dry", True)),
+          threading.Thread(target=campaign, args=("live", False)),
+      ]
+      for thread in threads:
+        thread.start()
+      for thread in threads:
+        thread.join(timeout=10)
+
+    self.assertEqual(seen, {"dry": dry_run.SOURCE_CAMPAIGN, "live": None})
+
+  def test_reaches_the_playbook_event_loop(self):
+    """asyncio.run, its tasks and asyncio.to_thread all see the flag.
+
+    The decision agent runs each playbook with asyncio.run inside the
+    scope; ADK then runs tools in tasks or in threads with a copied context.
+    """
+
+    async def playbook():
+      async def tool_task():
+        return dry_run.is_dry_run()
+
+      direct = dry_run.is_dry_run()
+      in_task = await asyncio.create_task(tool_task())
+      in_wait_for = await asyncio.wait_for(tool_task(), timeout=5)
+      in_thread = await asyncio.to_thread(dry_run.is_dry_run)
+      return direct, in_task, in_wait_for, in_thread
+
+    with _deployment_off():
+      with dry_run.campaign_dry_run(True):
+        self.assertEqual(asyncio.run(playbook()), (True, True, True, True))
+      self.assertEqual(asyncio.run(playbook()), (False, False, False, False))
+
+  def test_response_names_the_source(self):
+    with _deployment_off(), dry_run.campaign_dry_run(True):
+      result = dry_run.dry_run_response("update_campaign_budget", {})
+    self.assertEqual(result["dry_run_source"], dry_run.SOURCE_CAMPAIGN)
+    with _enabled("true"):
+      result = dry_run.dry_run_response("update_campaign_budget", {})
+    self.assertEqual(result["dry_run_source"], dry_run.SOURCE_DEPLOYMENT)
+
+
+class TestCampaignScopeSuppressesWrites(unittest.TestCase):
+  """The real tools honour the campaign scope exactly as they do the env var."""
+
+  def _budget_client(self):
+    client = MagicMock()
+    row = MagicMock()
+    row.campaign.campaign_budget = "customers/5341114500/campaignBudgets/1"
+    client.get_service.return_value.search_stream.return_value = [MagicMock(results=[row])]
+    return client
+
+  def _update_budget(self, client):
+    with patch.object(google_ads_updater, "get_google_ads_client", return_value=client):
+      return google_ads_updater.update_google_ads_campaign_budget(
+          "5341114500", "24252893412", 2_000_000
+      )
+
+  def test_budget_write_is_suppressed_in_scope(self):
+    client = self._budget_client()
+    with _deployment_off(), dry_run.campaign_dry_run(True):
+      result = self._update_budget(client)
+
+    self.assertTrue(result["dry_run"])
+    self.assertEqual(result["dry_run_source"], dry_run.SOURCE_CAMPAIGN)
+    self.assertEqual(result["would_have"]["new_budget_micros"], 2_000_000)
+    self.assertFalse(
+        client.get_service.return_value.mutate_campaign_budgets.called,
+        "a campaign in dry run must not change its budget",
+    )
+
+  def test_budget_write_goes_through_outside_scope(self):
+    client = self._budget_client()
+    with _deployment_off(), dry_run.campaign_dry_run(False):
+      result = self._update_budget(client)
+
+    self.assertNotIn("dry_run", result)
+    self.assertTrue(client.get_service.return_value.mutate_campaign_budgets.called)
+
+  def test_asset_group_write_is_suppressed_in_scope(self):
+    client = MagicMock()
+    existing = {
+        "asset_group_id": "6747753318",
+        "asset_group_name": WEATHER_GROUP,
+        "campaign_id": "24252893412",
+        "status": "PAUSED",
+    }
+    with _deployment_off(), dry_run.campaign_dry_run(True):
+      result = google_ads_asset_groups._perform_status_update(
+          client, "5341114500", existing, "ENABLED"
+      )
+
+    self.assertTrue(result["dry_run"])
+    self.assertFalse(client.get_service.return_value.mutate_asset_groups.called)
 
 
 if __name__ == "__main__":

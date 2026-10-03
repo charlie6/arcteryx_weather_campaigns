@@ -55,7 +55,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Set
 from agentic_dsta.config_sync import schema
 from agentic_dsta.core import activation as activation_lib
 from agentic_dsta.core import telemetry
-from agentic_dsta.core.dry_run import is_dry_run
+from agentic_dsta.core.dry_run import is_dry_run, parse_flag as parse_dry_run_flag
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +120,7 @@ class GoogleAdsBudgetGateway:
         # Imported lazily: the Google Ads SDK is heavy and unit tests and the
         # export command do not need it.
         from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client  # pylint: disable=import-outside-toplevel
+        from agentic_dsta.tools.google_ads.google_ads_retry import google_ads_service  # pylint: disable=import-outside-toplevel
 
         client = get_google_ads_client(customer_id)
         if not client:
@@ -129,7 +130,7 @@ class GoogleAdsBudgetGateway:
             "campaign_budget.amount_micros, campaign_budget.explicitly_shared "
             f"FROM campaign WHERE campaign.id = {int(campaign_id)}"
         )
-        service = client.get_service("GoogleAdsService")
+        service = google_ads_service(client)
         for batch in service.search_stream(customer_id=customer_id, query=query):
             for row in batch.results:
                 return {
@@ -144,7 +145,9 @@ class GoogleAdsBudgetGateway:
         """Sets the budget through the same updater the agent uses.
 
         The updater honours ADSTA_DRY_RUN, so a dry run never changes the
-        account even if this is called.
+        account even if this is called. A campaign's own dry run flag is
+        checked by apply_plan instead: the sync runs before any campaign is
+        processed, outside the scope that sets it.
         """
         from agentic_dsta.tools.google_ads.google_ads_updater import update_google_ads_campaign_budget  # pylint: disable=import-outside-toplevel
 
@@ -190,7 +193,12 @@ class DocWrite:
 
 @dataclasses.dataclass
 class BudgetAction:
-    """What the sync will do with one campaign's normal daily budget."""
+    """What the sync will do with one campaign's normal daily budget.
+
+    ``dry_run`` is True when the campaign itself is in dry run. A push is
+    then reported but not applied (see apply_plan); state-only actions still
+    run, because Firestore is ADSTA's own state.
+    """
 
     customer_id: str
     campaign_id: int
@@ -204,9 +212,13 @@ class BudgetAction:
     campaign_name: Optional[str] = None
     state_update: Dict[str, Any] = dataclasses.field(default_factory=dict)
     state_exists: bool = True
+    dry_run: bool = False
 
     def __str__(self) -> str:
-        return f"{self.action.upper()}: campaign {self.campaign_id}: {self.message}"
+        text = f"{self.action.upper()}: campaign {self.campaign_id}: {self.message}"
+        if self.dry_run and self.action == BUDGET_PUSH:
+            text += " [campaign in dry run: not applied]"
+        return text
 
     def to_dict(self) -> Dict[str, Any]:
         """Firestore-safe representation."""
@@ -219,6 +231,7 @@ class BudgetAction:
             "normalMicros": self.normal_micros,
             "increaseActive": self.increase_active,
             "message": self.message,
+            "dryRun": self.dry_run,
         }
 
 
@@ -414,6 +427,11 @@ def desired_ads_config(
     example ``hemisphere``), so the sheet never erases settings it cannot show.
     The retired per-campaign ``params.activation`` is dropped.
 
+    A campaign's ``dryRun`` flag sits on the campaign entry, not in
+    ``params``, so it never reaches the playbook prompt: the model must act
+    exactly as it would live, and the tools suppress the writes. It is only
+    stored when true. A sheet without a "Dry run" column leaves it unchanged.
+
     Args:
         account: The account row.
         campaigns: That account's campaign rows.
@@ -470,9 +488,32 @@ def desired_ads_config(
         else:
             params.pop("severeModifiers", None)
         entry["params"] = params
+        if row.dry_run:
+            entry["dryRun"] = True
+        elif row.dry_run is False:
+            entry.pop("dryRun", None)
         entries.append(entry)
     doc["campaigns"] = entries
     return doc
+
+
+def campaign_dry_run_setting(row: schema.CampaignRow, existing: Optional[Dict[str, Any]]) -> bool:
+    """Whether a campaign is in dry run once the sheet is applied.
+
+    Args:
+        row: The campaign row.
+        existing: The account's current GoogleAdsConfig data, or None. Used
+            when the sheet has no "Dry run" column.
+
+    Returns:
+        The sheet's value if it has the column, else the stored ``dryRun``.
+    """
+    if row.dry_run is not None:
+        return row.dry_run
+    for entry in (existing or {}).get("campaigns", []) or []:
+        if isinstance(entry, dict) and str(entry.get("campaignId")) == str(row.campaign_id):
+            return parse_dry_run_flag(entry.get("dryRun"))
+    return False
 
 
 def decide_budget(
@@ -799,7 +840,9 @@ def build_plan(
         except Exception as err:  # pylint: disable=broad-except
             live_error = str(err)[:300]
         state_doc = state.budget_states.get(budget_state_id(row.customer_id, row.campaign_id))
-        plan.budget_actions.append(decide_budget(row, state_doc, live, live_error))
+        action = decide_budget(row, state_doc, live, live_error)
+        action.dry_run = campaign_dry_run_setting(row, state.ads_configs.get(row.customer_id))
+        plan.budget_actions.append(action)
     return plan
 
 
@@ -839,9 +882,10 @@ def apply_plan(
     """Applies a plan built by :func:`build_plan`.
 
     Configuration writes always happen (they are ADSTA's own state). Budget
-    pushes respect dry run: with ADSTA_DRY_RUN on they are reported and
-    skipped, and their state is not written either, so the next live sync
-    still sees the difference and pushes it.
+    pushes respect dry run: with ADSTA_DRY_RUN on, or for a campaign whose
+    own dry run flag is set, they are reported and skipped, and their state
+    is not written either, so the next live sync still sees the difference
+    and pushes it.
 
     Args:
         plan: The plan.
@@ -891,10 +935,12 @@ def apply_plan(
             budget_state_id(action.customer_id, action.campaign_id)
         )
         if action.action == BUDGET_PUSH:
-            if dry_run:
-                entry["result"] = "dry_run: not applied"
-                logger.info("Config sheet budget push suppressed (dry run): %s", action,
-                            extra={"sync_id": plan.sync_id, "campaign_id": str(action.campaign_id)})
+            if dry_run or action.dry_run:
+                scope = "deployment" if dry_run else "campaign"
+                entry["result"] = "dry_run: not applied" if dry_run else "campaign dry run: not applied"
+                logger.info("Config sheet budget push suppressed (%s dry run): %s", scope, action,
+                            extra={"sync_id": plan.sync_id, "customer_id": action.customer_id,
+                                   "campaign_id": str(action.campaign_id), "dry_run_source": scope})
                 budget_log.append(entry)
                 continue
             try:
@@ -1236,6 +1282,7 @@ def build_export_rows(db: Any, customer_ids: Optional[Set[str]] = None) -> Dict[
                 schema.micros_to_units(normal) if normal is not None else "",
                 severe.get("budgetBumpPct", "") if "severe_budget" in playbook_ids else "",
                 schema.micros_to_units(severe.get("maxDailyBudgetMicros")) or "",
+                "Y" if parse_dry_run_flag(campaign.get("dryRun")) else "N",
             ])
 
     defaults = _default_activation(db)

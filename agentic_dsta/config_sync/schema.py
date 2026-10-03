@@ -17,8 +17,8 @@ The sheet has three operator tabs and one log tab:
 
 * ``Accounts``  - one row per Google Ads customer: schedule, windows, change
   guard and asset group tokens (the account-level GoogleAdsConfig fields).
-* ``Campaigns`` - one row per campaign: city, playbooks, budget levers and the
-  normal daily budget.
+* ``Campaigns`` - one row per campaign: city, playbooks, budget levers, the
+  normal daily budget and an optional per-campaign dry run switch.
 * ``Cities``    - one row per weather location: the asset group activation
   thresholds, plus read-only reference columns (coordinates and severe
   thresholds) that the sync never reads.
@@ -105,6 +105,8 @@ CAMPAIGN_COLUMNS: Tuple[Column, ...] = (
     Column("normalDailyBudget", "Normal daily budget"),
     Column("budgetBumpPct", "Budget bump %"),
     Column("maxDailyBudget", "Max daily budget"),
+    # Optional. Appended last so adding it does not shift existing columns.
+    Column("dryRun", "Dry run"),
 )
 
 CITY_COLUMNS: Tuple[Column, ...] = (
@@ -205,7 +207,12 @@ class AccountRow:
 
 @dataclasses.dataclass
 class CampaignRow:
-    """A validated Campaigns row. Budgets are in micros."""
+    """A validated Campaigns row. Budgets are in micros.
+
+    ``dry_run`` is None when the sheet has no "Dry run" column. The sync then
+    leaves the campaign's stored setting as it is rather than reading the
+    missing column as "live".
+    """
 
     row: int
     customer_id: str
@@ -219,6 +226,7 @@ class CampaignRow:
     normal_budget_micros: Optional[int]
     budget_bump_pct: Optional[float]
     max_budget_micros: Optional[int]
+    dry_run: Optional[bool] = None
 
     @property
     def playbooks(self) -> List[str]:
@@ -342,6 +350,10 @@ class _RowReader:
         if position is None or position >= len(self._cells):
             return None
         return self._cells[position]
+
+    def has(self, key: str) -> bool:
+        """Whether the tab has this column (its cell in this row may be blank)."""
+        return key in self._index
 
     def _report(
         self, key: str, message: str, severity: str = ERROR, also_customers: Sequence[str] = ()
@@ -593,6 +605,8 @@ def _parse_campaigns(
         bump = reader.number("budgetBumpPct", _BUMP_PCT)
         normal_units = reader.number("normalDailyBudget", _BUDGET_UNITS)
         max_units = reader.number("maxDailyBudget", _BUDGET_UNITS)
+        # Tri-state: None (no column) leaves the stored setting unchanged.
+        dry_run = reader.flag("dryRun", default=False) if reader.has("dryRun") else None
 
         if active and asset_groups is False and severe_budget is False:
             reader.error("assetGroups", "an active campaign must run Asset groups, Severe budget, or both")
@@ -602,6 +616,8 @@ def _parse_campaigns(
             reader.warn("budgetBumpPct", "is ignored because Severe budget is N")
         if normal_units is not None and max_units is not None and max_units < normal_units:
             reader.error("maxDailyBudget", "must be at least the Normal daily budget")
+        if dry_run and active is False:
+            reader.warn("dryRun", "is ignored because Active is N")
 
         row = CampaignRow(
             row=reader.row,
@@ -616,6 +632,7 @@ def _parse_campaigns(
             normal_budget_micros=units_to_micros(normal_units) if normal_units is not None else None,
             budget_bump_pct=bump,
             max_budget_micros=units_to_micros(max_units) if max_units is not None else None,
+            dry_run=dry_run,
         )
         if reader.ok:
             campaigns.append(row)

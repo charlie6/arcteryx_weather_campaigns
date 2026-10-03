@@ -63,6 +63,7 @@ Columns are matched by their header text, so you can reorder them or add your ow
 | Normal daily budget | In account currency, for example `25.00`. Blank means the sheet does not manage this budget. See [Budgets](#budgets). |
 | Budget bump % | Required when Severe budget is Y. |
 | Max daily budget | Optional cap on the severe-weather increase. Must be at least the normal budget. |
+| Dry run | Optional. `Y` runs the campaign without changing it in Google Ads. Blank means N. See [Dry run for one campaign](#dry-run-for-one-campaign). |
 
 **Cities**
 
@@ -95,7 +96,19 @@ The normal daily budget is what ADSTA returns to after a severe-weather increase
 | The budget was changed outside the sheet (by hand in Google Ads, or adopted by ADSTA after a manual change) and the sheet still shows the old value | **Conflict.** Skips the campaign and reports it on every run until you update the cell. Enter the live value to accept the manual change, or a new value to override it. |
 | Shared budget, or the budget can't be read | Skips the campaign and reports why. |
 
-`ADSTA_DRY_RUN` applies here as well. In dry-run mode the sync reports budget pushes but doesn't make them.
+`ADSTA_DRY_RUN` applies here as well. In dry-run mode the sync reports budget pushes but doesn't make them. A campaign's own `Dry run` does the same for that campaign: its new budget is pushed on the first sync after you set it back to `N`.
+
+## Dry run for one campaign
+
+Set a campaign's `Dry run` to `Y` to try ADSTA on it, or to stop it changing the campaign, without affecting the other campaigns. The next run picks it up, because each run syncs the sheet first.
+
+- **What still happens:** the campaign's playbooks run as usual. They read the forecast and Google Ads, decide, and write their ChangeLog rows. The model isn't told about the dry run, so it decides exactly as it would live.
+- **What doesn't:** nothing changes in Google Ads for that campaign. ADSTA blocks every write in code: no asset group is enabled or paused, no budget changes, and the sheet's Normal daily budget isn't pushed.
+- **Where to see it:** the campaign's ChangeLog rows have `mode` `log-only`. Its `mutation_applied` events have `dry_run="true"` and `dry_run_source="campaign"`. `run_completed` counts the campaigns in dry run in `dry_run_campaigns`.
+- **The campaign stays as ADSTA last left it.** If a severe-weather increase or a weather asset group is active when you set `Y`, it stays on until you set `N`. Then the next run picks up from there and reverts what the weather no longer calls for. To start from a clean state, set `Y` while nothing is active.
+- **Change volume guard:** budget increases a campaign in dry run would have made still count towards the cap, because a bad forecast shows up either way. The guard's log entry says how many of them were log-only.
+- `ADSTA_DRY_RUN` overrides the column: when it is on, every campaign is in dry run.
+- **A sheet without the column** leaves each campaign's setting as it is. To use it in an existing sheet, add a `Dry run` header to `Campaigns`. `export` puts it last.
 
 ## Adding a Google Ads account
 
@@ -125,6 +138,6 @@ One deployment can run several Google Ads accounts under the same manager (MCC) 
    - Keep the account's `Runs per day` in step with its cron.
 5. In Cloud Scheduler, use **Force run** on the new job and check its logs. The account's "Missed runs" alert fires until its first run completes.
 
-`ADSTA_DRY_RUN` applies to every account in the deployment.
+`ADSTA_DRY_RUN` applies to every account in the deployment. To try a new account first, set its campaigns' `Dry run` to `Y`.
 
 To remove an account, delete its entry from `googleads_additional_customers` and redeploy. This deletes its job and its alert. Then delete its rows or set its campaigns' `Active` to `N`. Its Firestore documents stay, unused.

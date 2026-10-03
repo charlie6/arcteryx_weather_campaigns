@@ -384,6 +384,107 @@ class TestApply:
         assert any("CustomerInstructions/1112223333" in str(i) for i in plan.issues)
 
 
+# --- Per-campaign dry run ----------------------------------------------------------
+
+
+def _without_dry_run_column(sheet: Dict[str, List[List[Any]]]) -> Dict[str, List[List[Any]]]:
+    """The sheet as it was before the Dry run column existed (it is last)."""
+    sheet[schema.CAMPAIGNS_TAB] = [row[:-1] for row in sheet[schema.CAMPAIGNS_TAB]]
+    return sheet
+
+
+def _stored_campaign(db: FakeDb) -> Dict[str, Any]:
+    return db.get("GoogleAdsConfig", CUSTOMER)["campaigns"][0]
+
+
+class TestCampaignDryRun:
+    def test_flag_is_stored_on_the_campaign_not_in_params(self):
+        # Params are rendered into the playbook prompt; the model must not
+        # know it is in dry run, so the flag stays out of them.
+        db = seeded_db()
+        run(db, tabs(campaigns=[campaign_row(**{"Dry run": "Y"})]), FakeBudgets({str(CAMPAIGN): 10 * M}))
+        campaign = _stored_campaign(db)
+        assert campaign["dryRun"] is True
+        assert "dryRun" not in campaign["params"]
+
+    @pytest.mark.parametrize("cell", ["N", ""])
+    def test_n_or_blank_removes_the_flag(self, cell):
+        db = seeded_db()
+        _stored_campaign(db)["dryRun"] = True
+        run(db, tabs(campaigns=[campaign_row(**{"Dry run": cell})]), FakeBudgets({str(CAMPAIGN): 10 * M}))
+        assert "dryRun" not in _stored_campaign(db)
+
+    def test_live_campaign_gets_no_flag(self):
+        db = seeded_db()
+        run(db, tabs(), FakeBudgets({str(CAMPAIGN): 10 * M}))
+        assert "dryRun" not in _stored_campaign(db)
+
+    def test_sheet_without_the_column_keeps_the_stored_flag(self):
+        db = seeded_db()
+        _stored_campaign(db)["dryRun"] = True
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        sheet = _without_dry_run_column(tabs(campaigns=[campaign_row(**{"Normal daily budget": 12.5})]))
+        run(db, sheet, budgets)
+        assert _stored_campaign(db)["dryRun"] is True
+        assert budgets.calls == []  # still in dry run, so the push is held back
+
+    def test_budget_push_is_held_back_for_a_dry_run_campaign(self, caplog):
+        db = seeded_db()
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        sheet = tabs(campaigns=[campaign_row(**{"Normal daily budget": 12.5, "Dry run": "Y"})])
+        with caplog.at_level(logging.INFO):
+            plan, result = run(db, sheet, budgets)
+
+        assert budgets.calls == []
+        assert result.budget_pushes == 0
+        # No state is written, so the push is still pending when dry run ends.
+        assert db.get("CampaignBudgetState", STATE_ID)["normalBudgetMicros"] == 10 * M
+        assert not [k for k in db.store if k[0] == "ChangeLog"]
+        assert "[campaign in dry run: not applied]" in plan.describe()
+        log = db.get("ConfigChangeLog", "sync_test")
+        assert log["dryRun"] is False  # the deployment is live
+        assert log["budgets"][0]["result"] == "campaign dry run: not applied"
+        assert log["budgets"][0]["dryRun"] is True
+        assert not [r for r in caplog.records if getattr(r, "event", None) == "mutation_applied"]
+
+    def test_turning_dry_run_off_releases_the_pending_push(self):
+        db = seeded_db()
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        run(db, tabs(campaigns=[campaign_row(**{"Normal daily budget": 12.5, "Dry run": "Y"})]), budgets)
+        _, result = run(db, tabs(campaigns=[campaign_row(**{"Normal daily budget": 12.5, "Dry run": "N"})]), budgets)
+        assert budgets.calls == [(CUSTOMER, str(CAMPAIGN), 12_500_000)]
+        assert result.budget_pushes == 1
+        assert db.get("CampaignBudgetState", STATE_ID)["normalBudgetMicros"] == 12_500_000
+
+    def test_other_campaigns_still_push(self):
+        db = two_account_db()
+        db.store[("CampaignBudgetState", f"{OTHER}_42")] = {"normalBudgetMicros": 5 * M, "increaseActive": False}
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M, "42": 5 * M})
+        sheet = tabs(
+            accounts=[account_row(), account_row(**{"Customer ID": OTHER})],
+            campaigns=[
+                campaign_row(**{"Normal daily budget": 12.5, "Dry run": "Y"}),
+                campaign_row(**{"Customer ID": OTHER, "Campaign ID": 42, "Normal daily budget": 6}),
+            ],
+        )
+        run(db, sheet, budgets)
+        assert budgets.calls == [(OTHER, "42", 6_000_000)]
+
+    def test_export_shows_the_flag_and_round_trips(self):
+        db = seeded_db()
+        del _stored_campaign(db)["params"]["activation"]
+        assert sync.build_export_rows(db)[schema.CAMPAIGNS_TAB][1][-1] == "N"
+
+        _stored_campaign(db)["dryRun"] = True
+        rows = sync.build_export_rows(db)
+        assert rows[schema.CAMPAIGNS_TAB][0][-1] == "Dry run"
+        assert rows[schema.CAMPAIGNS_TAB][1][-1] == "Y"
+        config = schema.parse_sheet(rows, set(sync.load_baselines(db)))
+        assert not config.errors, [str(e) for e in config.errors]
+        plan = sync.build_plan(config, sync.load_state(db, config, None), None, sync_id="s")
+        assert {w.collection for w in plan.writes} == {"ClimateBaselines"}
+
+
 # --- Several accounts in one sheet ------------------------------------------------
 
 OTHER = "1112223333"

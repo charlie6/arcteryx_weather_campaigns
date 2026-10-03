@@ -45,6 +45,8 @@ EVENT_TOOL_ERROR = "tool_error"
 EVENT_MODEL_ERROR = "model_error"
 EVENT_CHANGE_GUARD_EXCEEDED = "change_guard_exceeded"
 EVENT_CAMPAIGN_NAME_MISMATCH = "campaign_name_mismatch"
+# A transient dependency error that is being retried (WARNING; no alert).
+EVENT_DEPENDENCY_RETRY = "dependency_retry"
 
 # --- Run outcomes ---
 OUTCOME_SUCCESS = "success"
@@ -133,6 +135,8 @@ class RunSummary:
         failed_playbooks: Playbook executions that raised.
         eligible_campaigns: Campaigns with at least one runnable playbook.
         skipped_campaigns: Campaigns skipped by the campaign name guard.
+        dry_run_campaigns: Eligible campaigns whose own ``dryRun`` flag was
+            set. Deployment-wide ADSTA_DRY_RUN is not counted here.
         duration_s: Wall-clock duration of the run in seconds.
     """
 
@@ -145,6 +149,7 @@ class RunSummary:
     failed_playbooks: int = 0
     eligible_campaigns: int = 0
     skipped_campaigns: int = 0
+    dry_run_campaigns: int = 0
     duration_s: float = 0.0
 
     @property
@@ -281,13 +286,15 @@ def make_agent_callbacks(run_context: Optional[Dict[str, Any]] = None) -> Dict[s
 
             if action and error is None:
                 dry_run = bool(isinstance(tool_response, dict) and tool_response.get("dry_run"))
+                dry_run_source = tool_response.get("dry_run_source") if dry_run else None
                 logger.info(
-                    "Audit: %s %s via %s on campaign %s (dry_run=%s)",
+                    "Audit: %s %s via %s on campaign %s (dry_run=%s%s)",
                     "suppressed" if dry_run else "applied",
                     action,
                     tool_name,
                     campaign_id or "(unknown)",
                     dry_run,
+                    f", {dry_run_source}" if dry_run_source else "",
                     extra=event_fields(
                         EVENT_MUTATION_APPLIED,
                         **_labels(
@@ -296,6 +303,7 @@ def make_agent_callbacks(run_context: Optional[Dict[str, Any]] = None) -> Dict[s
                             dependency=dependency,
                             campaign_id=campaign_id,
                             dry_run=str(dry_run).lower(),
+                            dry_run_source=dry_run_source,
                             # 'args' is a reserved LogRecord attribute.
                             tool_args=args,
                         ),

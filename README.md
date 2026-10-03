@@ -481,7 +481,7 @@ Used by the weather budget-adjustment workflow (see `infra/config/samples/arcter
 
 **Collection: `BudgetChangeLog`**
 
-An append-only audit trail. One document per campaign per run, written whether or not the run changed anything, recording the timestamp, campaign, weather location, condition, whether the severity test was met, the observed value against the threshold it was compared to, the budget before and after, the day number, the trailing thirty-day count, the mode (`live` or `log-only`) and any notes such as a detected manual override or a missing baseline.
+An append-only audit trail. One document per campaign per run, written whether or not the run changed anything, recording the timestamp, campaign, weather location, condition, whether the severity test was met, the observed value against the threshold it was compared to, the budget before and after, the day number, the trailing thirty-day count, the mode (`live` or `log-only`) and any notes such as a detected manual override or a missing baseline. `log-only` means the row was written during a dry run, either of the whole deployment (`ADSTA_DRY_RUN`) or of that campaign (the configuration sheet's `Dry run` column, see [CONFIG_SHEET.md](infra/CONFIG_SHEET.md#dry-run-for-one-campaign)), so nothing changed in Google Ads. ADSTA enforces this in code: a row the model writes as `live` (or with no mode) during a dry run is stored as `log-only`.
 
 ### API Specifications
 

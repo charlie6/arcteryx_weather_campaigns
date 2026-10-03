@@ -246,3 +246,20 @@ def test_guard_event_names_the_account(caplog: pytest.LogCaptureFixture) -> None
     events = _guard(rows, eligible=2, caplog=caplog, customer_id=CUSTOMER_ID)
     assert len(events) == 1
     assert events[0].customer_id == CUSTOMER_ID
+
+
+def test_guard_counts_dry_run_increases_and_reports_them(caplog: pytest.LogCaptureFixture) -> None:
+    # A bad weather feed shows up in dry-run campaigns too, so their
+    # would-have increases count towards the cap. The event says how many
+    # of them changed nothing, so the operator knows the real spend added.
+    rows = [
+        {"budgetBeforeMicros": 1000000, "budgetAfterMicros": 1500000, "mode": "live"},
+        {"budgetBeforeMicros": 1000000, "budgetAfterMicros": 1500000, "mode": "log-only"},
+        {"budgetBeforeMicros": 1000000, "budgetAfterMicros": 1500000, "mode": " Log-Only "},
+        {"budgetBeforeMicros": 2000000, "budgetAfterMicros": 1000000, "mode": "log-only"},  # revert
+    ]
+    events = _guard(rows, eligible=2, caplog=caplog)
+    assert len(events) == 1
+    assert events[0].budget_changes == 3
+    assert events[0].log_only_changes == 2
+    assert "(2 log-only)" in events[0].getMessage()

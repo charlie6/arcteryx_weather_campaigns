@@ -16,6 +16,7 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 import os
 
+from agentic_dsta.core import dry_run
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 
 class TestFirestoreToolset(unittest.IsolatedAsyncioTestCase):
@@ -166,6 +167,72 @@ class TestFirestoreToolset(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["count"], 2)
         self.assertEqual(result["collections"], ["coll1", "coll2"])
+
+
+class TestChangeLogDryRunMode(unittest.TestCase):
+    """ChangeLog rows written during a dry run must read 'log-only'."""
+
+    def setUp(self):
+        env = patch.dict(os.environ, {
+            "GOOGLE_CLOUD_PROJECT": "test_project",
+            "FIRESTORE_DB": "dsta-agentic-firestore",
+            dry_run.DRY_RUN_ENV_VAR: "",
+        })
+        env.start()
+        self.addCleanup(env.stop)
+        client_patch = patch('agentic_dsta.tools.firestore.firestore_toolset.firestore.Client')
+        client_cls = client_patch.start()
+        self.addCleanup(client_patch.stop)
+        self.doc_ref = client_cls.return_value.collection.return_value.document.return_value
+        self.toolset = FirestoreToolset()
+
+    def _written(self):
+        """The data passed to the last Firestore set() call."""
+        return self.doc_ref.set.call_args.args[0]
+
+    def test_live_row_becomes_log_only_for_a_dry_run_campaign(self):
+        row = {"campaignId": "24252893412", "mode": "live"}
+        with dry_run.campaign_dry_run(True):
+            self.toolset.set_document("ChangeLog", "run_24252893412", row)
+        self.assertEqual(self._written()["mode"], "log-only")
+        self.assertEqual(self._written()["campaignId"], "24252893412")
+        self.assertEqual(row["mode"], "live", "the caller's dict must not be modified")
+
+    def test_missing_or_blank_mode_becomes_log_only(self):
+        for row in ({"campaignId": "1"}, {"campaignId": "1", "mode": ""}, {"campaignId": "1", "mode": " LIVE "}):
+            with self.subTest(row=row), dry_run.campaign_dry_run(True):
+                self.toolset.set_document("ChangeLog", "doc", row)
+                self.assertEqual(self._written()["mode"], "log-only")
+
+    def test_deployment_dry_run_also_marks_rows(self):
+        with patch.dict(os.environ, {dry_run.DRY_RUN_ENV_VAR: "true"}):
+            self.toolset.set_document("ChangeLog", "doc", {"mode": "live"})
+        self.assertEqual(self._written()["mode"], "log-only")
+
+    def test_other_modes_are_kept(self):
+        with dry_run.campaign_dry_run(True):
+            self.toolset.set_document("ChangeLog", "doc", {"mode": "skipped"})
+        self.assertEqual(self._written()["mode"], "skipped")
+
+    def test_merge_without_mode_is_untouched(self):
+        with dry_run.campaign_dry_run(True):
+            self.toolset.set_document("ChangeLog", "doc", {"notes": "x"}, merge=True)
+        self.doc_ref.set.assert_called_with({"notes": "x"}, merge=True)
+
+    def test_merge_with_live_mode_is_marked(self):
+        with dry_run.campaign_dry_run(True):
+            self.toolset.set_document("ChangeLog", "doc", {"mode": "live"}, merge=True)
+        self.doc_ref.set.assert_called_with({"mode": "log-only"}, merge=True)
+
+    def test_live_campaign_rows_are_untouched(self):
+        with dry_run.campaign_dry_run(False):
+            self.toolset.set_document("ChangeLog", "doc", {"mode": "live"})
+        self.assertEqual(self._written()["mode"], "live")
+
+    def test_other_collections_are_untouched(self):
+        with dry_run.campaign_dry_run(True):
+            self.toolset.set_document("CampaignBudgetState", "doc", {"mode": "live"})
+        self.assertEqual(self._written()["mode"], "live")
 
 
 if __name__ == '__main__':

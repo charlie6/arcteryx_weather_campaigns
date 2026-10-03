@@ -34,6 +34,7 @@ from google.adk.tools.function_tool import FunctionTool
 
 from agentic_dsta.agents.decision_agent import playbooks as playbooks_lib
 from agentic_dsta.config_sync import sync as config_sync
+from agentic_dsta.core import dry_run
 from agentic_dsta.core import telemetry
 from agentic_dsta.tools.firestore.firestore_toolset import FirestoreToolset
 from google.adk import agents
@@ -440,12 +441,15 @@ def _fetch_campaign_name(customer_id: str, campaign_id: Any) -> Optional[str]:
     """
     # Imported lazily: the Google Ads SDK is heavy and unit tests patch this.
     from agentic_dsta.tools.google_ads.google_ads_client import get_google_ads_client  # pylint: disable=import-outside-toplevel
+    from agentic_dsta.tools.google_ads.google_ads_retry import google_ads_service  # pylint: disable=import-outside-toplevel
 
     client = get_google_ads_client(customer_id)
     if not client:
         raise RuntimeError("Failed to get Google Ads client.")
     query = f"SELECT campaign.name FROM campaign WHERE campaign.id = {int(campaign_id)}"
-    service = client.get_service("GoogleAdsService")
+    # Transient errors are retried, so a brief Google Ads blip does not skip
+    # the campaign for the whole run.
+    service = google_ads_service(client)
     for batch in service.search_stream(customer_id=customer_id, query=query):
         for row in batch.results:
             return row.campaign.name
@@ -652,23 +656,39 @@ def _check_change_volume_guard(
         for doc in result.get("documents", [])
         if _is_budget_increase(doc.get("data") or {})
     ]
+    # Dry-run campaigns' would-have increases still count: the guard watches
+    # for a bad weather feed, which shows up whether or not writes are live.
+    # The split tells the operator how much real spend was added.
+    log_only = sum(
+        1
+        for doc in changed
+        if str((doc.get("data") or {}).get("mode") or "").strip().lower() == "log-only"
+    )
 
     logger.info(
-        "Change volume for run %s: %d budget increase(s) across %d eligible campaign(s), cap %d",
+        "Change volume for run %s: %d budget increase(s) (%d log-only) across %d eligible "
+        "campaign(s), cap %d",
         run_id,
         len(changed),
+        log_only,
         eligible_campaigns,
         cap,
-        extra={"run_id": run_id, "budget_changes": len(changed), "cap": cap},
+        extra={
+            "run_id": run_id,
+            "budget_changes": len(changed),
+            "log_only_changes": log_only,
+            "cap": cap,
+        },
     )
 
     if len(changed) > cap:
         logger.error(
-            "CHANGE VOLUME GUARD EXCEEDED for run %s: %d budget increases against a cap "
-            "of %d (%.0f%% of %d eligible campaigns). This may indicate a bad weather "
+            "CHANGE VOLUME GUARD EXCEEDED for run %s: %d budget increases (%d log-only) against "
+            "a cap of %d (%.0f%% of %d eligible campaigns). This may indicate a bad weather "
             "data feed. Review ChangeLog rows for runId=%s.",
             run_id,
             len(changed),
+            log_only,
             cap,
             float(fraction) * 100,
             eligible_campaigns,
@@ -678,6 +698,7 @@ def _check_change_volume_guard(
                 run_id=run_id,
                 customer_id=customer_id,
                 budget_changes=len(changed),
+                log_only_changes=log_only,
                 cap=cap,
                 eligible_campaigns=eligible_campaigns,
             ),
@@ -711,6 +732,7 @@ class _CampaignResult:
         skipped: True if the name guard skipped it.
         succeeded: Playbook executions that completed.
         failed: Playbook executions that raised or timed out.
+        dry_run: True if its playbooks ran under its own dryRun flag.
     """
 
     campaign_id: str
@@ -718,6 +740,7 @@ class _CampaignResult:
     skipped: bool = False
     succeeded: int = 0
     failed: int = 0
+    dry_run: bool = False
 
 
 def _int_setting(env_name: str, default: int, minimum: int, maximum: int) -> int:
@@ -872,52 +895,71 @@ def _process_campaign(
     result.eligible = True
     campaign_start_time = time.perf_counter()
 
+    # Per-campaign dry run: the playbooks run exactly as they would live, and
+    # every Google Ads write inside this scope is suppressed by the tools.
+    # The flag is set here, in this campaign's worker thread, so campaigns
+    # running in parallel are not affected.
+    result.dry_run = dry_run.parse_flag(job.campaign.get("dryRun"))
+    if result.dry_run:
+        logger.info(
+            "Campaign %s is in dry run (dryRun in its config): Google Ads changes will be "
+            "logged, not applied",
+            campaign_id,
+            extra={
+                "campaign_id": str(campaign_id),
+                "run_id": run_id,
+                "dry_run": True,
+                "dry_run_source": dry_run.SOURCE_CAMPAIGN,
+            },
+        )
+
     # Isolation is per (campaign, playbook) rather than per campaign so that a
     # campaign missing its Severe Modifiers params still gets its asset groups
     # toggled, per section 7 of the spec. Playbooks run in order: the budget
     # playbook must see the asset group state the first one left behind.
-    for playbook_id, instruction in job.instructions:
-        try:
-            asyncio.run(
-                _run_playbook_with_timeout(
-                    playbook_timeout_s,
-                    customer_id=customer_id,
-                    usecase=usecase,
-                    run_id=run_id,
-                    campaign_id=campaign_id,
-                    playbook_id=playbook_id,
-                    instruction=instruction,
+    with dry_run.campaign_dry_run(result.dry_run):
+        for playbook_id, instruction in job.instructions:
+            try:
+                asyncio.run(
+                    _run_playbook_with_timeout(
+                        playbook_timeout_s,
+                        customer_id=customer_id,
+                        usecase=usecase,
+                        run_id=run_id,
+                        campaign_id=campaign_id,
+                        playbook_id=playbook_id,
+                        instruction=instruction,
+                    )
                 )
-            )
-            elapsed = time.perf_counter() - campaign_start_time
-            logger.info(
-                "Playbook '%s' completed for Campaign %s in %.2fs",
-                playbook_id,
-                campaign_id,
-                elapsed,
-                extra={"campaign_id": str(campaign_id), "playbook_id": playbook_id, "duration_s": elapsed},
-            )
-            result.succeeded += 1
-        except Exception as e:  # pylint: disable=broad-except
-            elapsed = time.perf_counter() - campaign_start_time
-            logger.exception(
-                "Failed playbook '%s' for Campaign %s after %.2fs: %s",
-                playbook_id,
-                campaign_id,
-                elapsed,
-                e,
-                extra=telemetry.event_fields(
-                    telemetry.EVENT_PLAYBOOK_FAILED,
-                    customer_id=str(customer_id),
-                    usecase=usecase,
-                    run_id=run_id,
-                    campaign_id=str(campaign_id),
-                    playbook_id=playbook_id,
-                    error_class=telemetry.classify_error(e),
-                    duration_s=elapsed,
-                ),
-            )
-            result.failed += 1
+                elapsed = time.perf_counter() - campaign_start_time
+                logger.info(
+                    "Playbook '%s' completed for Campaign %s in %.2fs",
+                    playbook_id,
+                    campaign_id,
+                    elapsed,
+                    extra={"campaign_id": str(campaign_id), "playbook_id": playbook_id, "duration_s": elapsed},
+                )
+                result.succeeded += 1
+            except Exception as e:  # pylint: disable=broad-except
+                elapsed = time.perf_counter() - campaign_start_time
+                logger.exception(
+                    "Failed playbook '%s' for Campaign %s after %.2fs: %s",
+                    playbook_id,
+                    campaign_id,
+                    elapsed,
+                    e,
+                    extra=telemetry.event_fields(
+                        telemetry.EVENT_PLAYBOOK_FAILED,
+                        customer_id=str(customer_id),
+                        usecase=usecase,
+                        run_id=run_id,
+                        campaign_id=str(campaign_id),
+                        playbook_id=playbook_id,
+                        error_class=telemetry.classify_error(e),
+                        duration_s=elapsed,
+                    ),
+                )
+                result.failed += 1
     return result
 
 
@@ -1005,7 +1047,7 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
     logger.log(
         level,
         "=== Completed Decision Agent Run %s for Customer %s in %.2fs "
-        "(outcome: %s%s, success: %d, failed: %d) ===",
+        "(outcome: %s%s, success: %d, failed: %d%s) ===",
         summary.run_id or "(none)",
         summary.customer_id,
         summary.duration_s,
@@ -1013,6 +1055,7 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
         f", reason: {summary.reason}" if summary.reason else "",
         summary.successful_playbooks,
         summary.failed_playbooks,
+        f", dry-run campaigns: {summary.dry_run_campaigns}" if summary.dry_run_campaigns else "",
         extra=telemetry.event_fields(
             telemetry.EVENT_RUN_COMPLETED,
             customer_id=summary.customer_id,
@@ -1023,6 +1066,7 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
             total_duration_s=summary.duration_s,
             eligible_campaigns=summary.eligible_campaigns,
             skipped_campaigns=summary.skipped_campaigns,
+            dry_run_campaigns=summary.dry_run_campaigns,
             # Legacy field names kept so existing saved log queries still work.
             successful_campaigns=summary.successful_playbooks,
             failed_campaigns=summary.failed_playbooks,
@@ -1329,6 +1373,7 @@ async def _execute_run(
     failed_campaigns = sum(r.failed for r in results)
     eligible_campaigns = sum(1 for r in results if r.eligible)
     skipped_campaigns = sum(1 for r in results if r.skipped)
+    dry_run_campaigns = sum(1 for r in results if r.eligible and r.dry_run)
 
     # 6. Cross-campaign safety net (spec section 5.5).
     _check_change_volume_guard(
@@ -1344,6 +1389,7 @@ async def _execute_run(
     summary.failed_playbooks = failed_campaigns
     summary.eligible_campaigns = eligible_campaigns
     summary.skipped_campaigns = skipped_campaigns
+    summary.dry_run_campaigns = dry_run_campaigns
     if failed_campaigns and successful_campaigns:
         summary.outcome = telemetry.OUTCOME_PARTIAL
     elif failed_campaigns:
