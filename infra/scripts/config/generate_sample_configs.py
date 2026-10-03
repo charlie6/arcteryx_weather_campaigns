@@ -278,8 +278,11 @@ Call set_document on 'CampaignBudgetState' / '{{budgetStateDocId}}' with merge t
 normalBudgetMicros, increaseActive, increaseStartDate, increaseDayNumber,
 lastAppliedBudgetMicros, increasedDays (dropping entries older than {{rollingWindowDays}} days)
 and lastRunDate '{{today}}'.
-If the budget call returned dry_run=true the account did not change: do NOT set increaseActive
-true, do NOT add TODAY to increasedDays, and do NOT change lastAppliedBudgetMicros.
+If the budget call returned dry_run=true the account did not change, so the state must not
+change either: keep increaseActive, increaseStartDate, increaseDayNumber and
+lastAppliedBudgetMicros as they were, and do NOT add TODAY to increasedDays. This applies to a
+suppressed revert (cases B and C) as well as a suppressed increase (case E): after a suppressed
+revert the budget is still elevated, so the increase is still active.
 
 STEP 8 - Change log. Always write one row, whether or not anything changed.
 Call set_document on collection 'ChangeLog', document_id
