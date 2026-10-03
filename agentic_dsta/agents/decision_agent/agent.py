@@ -1047,15 +1047,17 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
     logger.log(
         level,
         "=== Completed Decision Agent Run %s for Customer %s in %.2fs "
-        "(outcome: %s%s, success: %d, failed: %d%s) ===",
+        "(outcome: %s%s; campaigns: %d succeeded, %d failed; playbooks: %d succeeded, %d failed%s) ===",
         summary.run_id or "(none)",
         summary.customer_id,
         summary.duration_s,
         summary.outcome,
         f", reason: {summary.reason}" if summary.reason else "",
+        summary.successful_campaigns,
+        summary.failed_campaigns,
         summary.successful_playbooks,
         summary.failed_playbooks,
-        f", dry-run campaigns: {summary.dry_run_campaigns}" if summary.dry_run_campaigns else "",
+        f"; dry-run campaigns: {summary.dry_run_campaigns}" if summary.dry_run_campaigns else "",
         extra=telemetry.event_fields(
             telemetry.EVENT_RUN_COMPLETED,
             customer_id=summary.customer_id,
@@ -1067,9 +1069,10 @@ def _log_run_completed(summary: telemetry.RunSummary) -> None:
             eligible_campaigns=summary.eligible_campaigns,
             skipped_campaigns=summary.skipped_campaigns,
             dry_run_campaigns=summary.dry_run_campaigns,
-            # Legacy field names kept so existing saved log queries still work.
-            successful_campaigns=summary.successful_playbooks,
-            failed_campaigns=summary.failed_playbooks,
+            successful_campaigns=summary.successful_campaigns,
+            failed_campaigns=summary.failed_campaigns,
+            successful_playbooks=summary.successful_playbooks,
+            failed_playbooks=summary.failed_playbooks,
         ),
     )
 
@@ -1369,8 +1372,11 @@ async def _execute_run(
         run_id=run_id,
     )
 
-    successful_campaigns = sum(r.succeeded for r in results)
-    failed_campaigns = sum(r.failed for r in results)
+    successful_playbooks = sum(r.succeeded for r in results)
+    failed_playbooks = sum(r.failed for r in results)
+    # A campaign counts as successful only if none of its playbooks failed.
+    successful_campaigns = sum(1 for r in results if r.succeeded and not r.failed)
+    failed_campaigns = sum(1 for r in results if r.failed)
     eligible_campaigns = sum(1 for r in results if r.eligible)
     skipped_campaigns = sum(1 for r in results if r.skipped)
     dry_run_campaigns = sum(1 for r in results if r.eligible and r.dry_run)
@@ -1385,14 +1391,16 @@ async def _execute_run(
     )
 
     # The run_completed event itself is emitted by run_decision_agent.
-    summary.successful_playbooks = successful_campaigns
-    summary.failed_playbooks = failed_campaigns
+    summary.successful_playbooks = successful_playbooks
+    summary.failed_playbooks = failed_playbooks
+    summary.successful_campaigns = successful_campaigns
+    summary.failed_campaigns = failed_campaigns
     summary.eligible_campaigns = eligible_campaigns
     summary.skipped_campaigns = skipped_campaigns
     summary.dry_run_campaigns = dry_run_campaigns
-    if failed_campaigns and successful_campaigns:
+    if failed_playbooks and successful_playbooks:
         summary.outcome = telemetry.OUTCOME_PARTIAL
-    elif failed_campaigns:
+    elif failed_playbooks:
         summary.outcome = telemetry.OUTCOME_FAILED
         summary.reason = "all_playbooks_failed"
     elif skipped_campaigns:
@@ -1400,7 +1408,7 @@ async def _execute_run(
         # did what it safely could, but an operator must fix the config.
         summary.outcome = telemetry.OUTCOME_PARTIAL
         summary.reason = telemetry.REASON_CAMPAIGNS_SKIPPED
-    elif successful_campaigns:
+    elif successful_playbooks:
         summary.outcome = telemetry.OUTCOME_SUCCESS
     else:
         # Campaigns exist but none resolved to a runnable playbook, which is

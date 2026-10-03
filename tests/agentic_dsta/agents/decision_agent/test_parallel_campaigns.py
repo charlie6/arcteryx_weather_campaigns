@@ -131,6 +131,7 @@ def test_campaigns_run_in_parallel_within_limit() -> None:
     summary, elapsed = _run(6, concurrency="3")
     assert summary.outcome == telemetry.OUTCOME_SUCCESS
     assert summary.successful_playbooks == 12
+    assert (summary.successful_campaigns, summary.failed_campaigns) == (6, 0)
     assert summary.eligible_campaigns == 6
     assert TRACKER.max_active == 3
     # Sequential would be 6 campaigns x 2 playbooks x 0.2s = 2.4s.
@@ -159,7 +160,13 @@ def test_hung_playbook_times_out_without_blocking_others(caplog: pytest.LogCaptu
     assert elapsed < 5
     # Campaign 100: both playbooks time out. The other two succeed.
     assert (summary.successful_playbooks, summary.failed_playbooks) == (4, 2)
+    assert (summary.successful_campaigns, summary.failed_campaigns) == (2, 1)
     assert summary.outcome == telemetry.OUTCOME_PARTIAL
+    completed = [r for r in caplog.records if getattr(r, "event", None) == telemetry.EVENT_RUN_COMPLETED]
+    assert len(completed) == 1
+    assert (completed[0].successful_campaigns, completed[0].failed_campaigns) == (2, 1)
+    assert (completed[0].successful_playbooks, completed[0].failed_playbooks) == (4, 2)
+    assert "campaigns: 2 succeeded, 1 failed; playbooks: 4 succeeded, 2 failed" in completed[0].getMessage()
     failures = [r for r in caplog.records if getattr(r, "event", None) == telemetry.EVENT_PLAYBOOK_FAILED]
     assert {r.campaign_id for r in failures} == {"100"}
     assert all(r.error_class == "timeout" for r in failures)

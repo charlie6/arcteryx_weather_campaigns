@@ -305,3 +305,22 @@ class TestAccountScoping:
         config = schema.parse_sheet(tabs(cities=[city_row(**{"Rain rate mm/h": ""})]), CITIES)
         warnings = [w for w in config.warnings if "playbook default applies" in w.message]
         assert [w.customer_ids for w in warnings] == [("5341114500",)]
+
+
+class TestDefaultThresholdWarning:
+    """The "playbook default applies" warning appears only when the default really applies."""
+
+    @staticmethod
+    def _default_warnings(config: schema.SheetConfig) -> List[str]:
+        return [w.message for w in config.warnings if "playbook default applies" in w.message]
+
+    def test_city_without_a_row_warns(self):
+        config = schema.parse_sheet(tabs(cities=[city_row(City="Toronto ON")]), CITIES)
+        warnings = self._default_warnings(config)
+        assert len(warnings) == 1 and warnings[0].startswith("Vancouver BC has no coldBelowC"), warnings
+
+    def test_city_row_with_an_error_reports_only_the_error(self):
+        # The error blocks the sync, so the stored thresholds stay in force.
+        config = schema.parse_sheet(tabs(cities=[city_row(**{"Cold below C": "nine"})]), CITIES)
+        assert [(e.tab, e.column) for e in config.errors] == [(schema.CITIES_TAB, "Cold below C")]
+        assert self._default_warnings(config) == [], messages(config)

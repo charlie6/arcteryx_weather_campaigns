@@ -164,7 +164,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     sync.append_sync_log(service, args.sheet_id, result, customer_id=customer_id)
     print(
         f"Outcome: {result.outcome}; {result.changes} config change(s), "
-        f"{result.budget_pushes} budget push(es), {result.conflicts} conflict(s)."
+        f"{result.budget_pushes} budget push(es), "
+        f"{result.budget_records} normal budget(s) recorded without a push, "
+        f"{result.conflicts} conflict(s)."
     )
     if result.outcome == sync.OUTCOME_INVALID:
       return 1

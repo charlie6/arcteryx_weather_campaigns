@@ -27,7 +27,7 @@ Slack, PagerDuty and Google Chat channels can be created in the console and atta
 | Event | Emitted when | Key labels |
 |---|---|---|
 | `run_started` | A run begins | `customer_id`, `usecase` |
-| `run_completed` | Once per run, always (heartbeat) | `customer_id`, `usecase`, `outcome`, `reason`, `run_id`, `total_duration_s`, `dry_run_campaigns` |
+| `run_completed` | Once per run, always (heartbeat) | `customer_id`, `usecase`, `outcome`, `reason`, `run_id`, `total_duration_s`, `successful_campaigns` / `failed_campaigns` (a campaign fails if any of its playbooks failed), `successful_playbooks` / `failed_playbooks`, `eligible_campaigns`, `skipped_campaigns`, `dry_run_campaigns` |
 | `playbook_failed` | A playbook execution raised | `campaign_id`, `playbook_id`, `error_class` |
 | `mutation_applied` | Google Ads / SA360 write (or dry-run suppression) | `action`, `dry_run`, `dry_run_source` (`deployment` or `campaign`, dry runs only), `campaign_id`, `tool_args` |
 | `tool_error` | A tool returned an error or raised | `dependency`, `error_class`, `tool`, `mutating` |
@@ -35,7 +35,7 @@ Slack, PagerDuty and Google Chat channels can be created in the console and atta
 | `dependency_retry` | A Google Ads read hit a transient error (gRPC `INTERNAL` or `UNAVAILABLE`) and is retried. WARNING; no alert. Reads are tried up to 4 times, about 1s, 2s and 4s apart; writes are never retried | `dependency`, `operation`, `customer_id`, `attempt`, `max_attempts`, `error_class` |
 | `change_guard_exceeded` | Budget **increases** in a run exceeded the cap (reverts to normal are not counted) | `run_id`, `customer_id`, `budget_changes`, `log_only_changes` (increases by campaigns in dry run, included in `budget_changes`), `cap` |
 | `campaign_name_mismatch` | A campaign was skipped because its live name doesn't contain `Campaign name contains`, or couldn't be read. Nothing ran for it | `campaign_id`, `reason` (`mismatch`, `not_found`, `lookup_failed`), `expected_name_contains`, `actual_name` |
-| `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `customer_id` (the run's account), `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `conflicts`, `error_count`, `other_account_error_count`, `needs_attention` |
+| `config_sync` | Once per config sheet sync (start of each run when `CONFIG_SHEET_ID` is set, or the CLI) | `customer_id` (the run's account), `outcome` (`applied`, `noop`, `invalid`, `error`, `partial`), `changes`, `budget_pushes`, `budget_records` (normal budgets saved without changing Google Ads), `conflicts`, `error_count`, `other_account_error_count`, `needs_attention` |
 
 `outcome` is one of `success`, `partial`, `failed`, `aborted`, `noop`. A run that skipped
 campaigns with the name guard ends `partial` with `reason="campaigns_skipped"`.

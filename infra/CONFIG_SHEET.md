@@ -84,6 +84,7 @@ A blank threshold means the playbook default applies (9.0 °C, 0.2 mm/h, 3 h). R
 - **Settings the sheet doesn't show** stay as they are in `GoogleAdsConfig`, for example `params.hemisphere`.
 - **Redeploys** keep the city thresholds. `upload_config.py` replaces `ClimateBaselines` but preserves `activation`. Only `FIRESTORE_SEED_MODE=overwrite` resets them.
 - **Audit trail:** each sync that changes something writes `ConfigChangeLog/{syncId}`. Budget pushes also write a `ChangeLog` row and a `mutation_applied` event.
+- **`SyncLog`:** a sync gets a row when it writes something or needs attention. `Changes` counts configuration fields, budgets set in Google Ads, and normal budgets saved without changing Google Ads (for example when Google Ads already has the sheet's value). Syncs with nothing to do add no row.
 
 ## Budgets
 

@@ -133,6 +133,8 @@ class RunSummary:
         reason: Abort reason (ABORT_* constant) when outcome is 'aborted'.
         successful_playbooks: Playbook executions that completed.
         failed_playbooks: Playbook executions that raised.
+        successful_campaigns: Campaigns whose playbooks all completed.
+        failed_campaigns: Campaigns with at least one failed playbook.
         eligible_campaigns: Campaigns with at least one runnable playbook.
         skipped_campaigns: Campaigns skipped by the campaign name guard.
         dry_run_campaigns: Eligible campaigns whose own ``dryRun`` flag was
@@ -147,6 +149,8 @@ class RunSummary:
     reason: str = ""
     successful_playbooks: int = 0
     failed_playbooks: int = 0
+    successful_campaigns: int = 0
+    failed_campaigns: int = 0
     eligible_campaigns: int = 0
     skipped_campaigns: int = 0
     dry_run_campaigns: int = 0

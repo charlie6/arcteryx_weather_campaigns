@@ -475,7 +475,7 @@ Used by the weather budget-adjustment workflow (see `infra/config/samples/arcter
 *   **`increaseActive`** (Boolean): Whether an increase is currently applied.
 *   **`increaseStartDate`** (String): `YYYY-MM-DD` on which the current increase began.
 *   **`increaseDayNumber`** (Number): Which day of the five-day maximum window this is.
-*   **`lastAppliedBudgetMicros`** (Number): The elevated amount last written by the agent. A live budget that differs from this indicates a manual override.
+*   **`lastAppliedBudgetMicros`** (Number): The elevated amount of the current or last increase, or the normal budget if the configuration sheet has pushed one since. It is only checked while an increase is active: a live budget that differs from it then indicates a manual override.
 *   **`increasedDays`** (Array of String): Dates on which an increase was applied, supporting the ten-day cap in any trailing thirty-day window.
 *   **`lastRunDate`** (String): `YYYY-MM-DD` of the last evaluation.
 

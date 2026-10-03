@@ -192,16 +192,36 @@ class TestDecideBudget:
         assert action.action == sync.BUDGET_PUSH
         assert action.state_exists is False
         assert action.state_update["normalBudgetMicros"] == 12 * M
+        assert action.state_update["lastAppliedBudgetMicros"] == 12 * M
+
+    def test_new_state_matching_google_ads_is_recorded(self):
+        action = sync.decide_budget(_row(12), None, _live(12 * M))
+        assert action.action == sync.BUDGET_RECORD and not action.is_noop
+        assert action.state_update["lastAppliedBudgetMicros"] is None  # ADSTA set nothing
 
     def test_first_sync_pushes_when_google_ads_matches_adsta(self):
         action = sync.decide_budget(_row(12), {"normalBudgetMicros": 10 * M}, _live(10 * M))
         assert action.action == sync.BUDGET_PUSH
-        assert action.state_update == {"normalBudgetMicros": 12 * M, "sheetNormalBudgetMicros": 12 * M}
+        assert action.state_update == {
+            "normalBudgetMicros": 12 * M, "sheetNormalBudgetMicros": 12 * M, "lastAppliedBudgetMicros": 12 * M,
+        }
 
     def test_unchanged_records_nothing(self):
         state = {"normalBudgetMicros": 12 * M, "sheetNormalBudgetMicros": 12 * M}
         action = sync.decide_budget(_row(12), state, _live(12 * M))
         assert action.action == sync.BUDGET_RECORD and not action.state_update
+        assert action.is_noop and action.message == "unchanged"
+
+    def test_accepting_an_adopted_budget_during_an_increase_says_what_it_records(self):
+        # ADSTA adopted a manual 15 and a new increase to 22.50 is running;
+        # the operator accepts the 15 in the sheet.
+        state = {"normalBudgetMicros": 15 * M, "sheetNormalBudgetMicros": 10 * M,
+                 "increaseActive": True, "lastAppliedBudgetMicros": 22_500_000}
+        action = sync.decide_budget(_row(15), state, _live(22_500_000))
+        assert action.action == sync.BUDGET_RECORD and not action.is_noop
+        assert action.message == "ADSTA's normal budget is already 15000000; recording the sheet value"
+        # lastAppliedBudgetMicros stays the elevated amount the playbook checks.
+        assert action.state_update == {"normalBudgetMicros": 15 * M, "sheetNormalBudgetMicros": 15 * M}
 
     def test_adsta_adopted_manual_change_and_sheet_is_stale(self):
         # Sheet last wrote 10; ADSTA adopted a manual 15 (case A); sheet still 10.
@@ -293,6 +313,7 @@ class TestApply:
         assert budgets.calls == [(CUSTOMER, str(CAMPAIGN), 12_500_000)]
         assert result.budget_pushes == 1
         assert db.get("CampaignBudgetState", STATE_ID)["normalBudgetMicros"] == 12_500_000
+        assert db.get("CampaignBudgetState", STATE_ID)["lastAppliedBudgetMicros"] == 12_500_000
         changelog = [v for (c, _), v in db.store.items() if c == "ChangeLog"]
         assert changelog[0]["budgetBeforeMicros"] == 10 * M
         assert changelog[0]["budgetAfterMicros"] == 12_500_000
@@ -326,6 +347,7 @@ class TestApply:
         _, result = run(db, sheet, budgets, dry_run=True)
         assert budgets.calls == []
         assert db.get("CampaignBudgetState", STATE_ID)["normalBudgetMicros"] == 10 * M
+        assert db.get("CampaignBudgetState", STATE_ID)["lastAppliedBudgetMicros"] is None
         # Configuration still syncs in dry run.
         assert "activation" in db.get("ClimateBaselines", "Vancouver BC")
         log = db.get("ConfigChangeLog", "sync_test")
@@ -382,6 +404,78 @@ class TestApply:
         plan, _ = run(db, sheet, None)
         assert db.get("GoogleAdsConfig", other)["campaigns"][0]["campaignId"] == 42
         assert any("CustomerInstructions/1112223333" in str(i) for i in plan.issues)
+
+
+# --- Normal budgets recorded without a push --------------------------------------
+
+
+def _synced_db(budgets: FakeBudgets) -> FakeDb:
+    """A db whose configuration and budget state already match tabs()."""
+    db = seeded_db()
+    run(db, tabs(), budgets)
+    return db
+
+
+class TestBudgetRecords:
+    """A RECORD that writes the normal budget is a change, though Google Ads is untouched."""
+
+    def test_recording_a_new_normal_budget_is_applied_and_reported(self, caplog):
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        db = _synced_db(budgets)
+        budgets.live[str(CAMPAIGN)] = 12 * M  # changed to 12 in Google Ads...
+        sheet = tabs(campaigns=[campaign_row(**{"Normal daily budget": 12})])  # ...and in the sheet
+        with caplog.at_level(logging.INFO):
+            plan, result = run(db, sheet, budgets)
+            sync.log_result(result, CUSTOMER)
+
+        assert plan.changes == []
+        assert result.outcome == sync.OUTCOME_APPLIED, plan.describe()
+        assert (result.budget_pushes, result.budget_records) == (0, 1)
+        assert budgets.calls == []
+        state = db.get("CampaignBudgetState", STATE_ID)
+        assert (state["normalBudgetMicros"], state["sheetNormalBudgetMicros"]) == (12 * M, 12 * M)
+        assert db.get("ConfigChangeLog", "sync_test")["budgets"][0]["result"] == "recorded"
+
+        text = plan.describe()
+        assert "BUDGET RECORD: campaign 24252893412: Google Ads already at 12000000" in text
+        assert "No changes" not in text
+        event = [r for r in caplog.records if getattr(r, "event", None) == sync.EVENT_CONFIG_SYNC][-1]
+        assert (event.outcome, event.budget_records) == (sync.OUTCOME_APPLIED, 1)
+
+        service = FakeSheets()
+        sync.append_sync_log(service, "sheet", result, now=NOW, customer_id=CUSTOMER)
+        assert service.rows[0][2:4] == [sync.OUTCOME_APPLIED, 1]
+        assert "RECORD: campaign 24252893412" in service.rows[0][6]
+
+    def test_budget_already_in_sync_is_a_silent_noop(self):
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        db = _synced_db(budgets)
+        plan, result = run(db, tabs(), budgets)
+
+        assert [a.is_noop for a in plan.budget_actions] == [True]
+        assert (result.outcome, result.budget_records) == (sync.OUTCOME_NOOP, 0)
+        text = plan.describe()
+        assert "No changes: Firestore already matches the sheet." in text
+        assert "BUDGET" not in text
+        service = FakeSheets()
+        sync.append_sync_log(service, "sheet", result, now=NOW)
+        assert service.rows == []
+
+    def test_new_normal_during_an_increase_is_recorded_not_pushed(self):
+        budgets = FakeBudgets({str(CAMPAIGN): 10 * M})
+        db = _synced_db(budgets)
+        db.store[("CampaignBudgetState", STATE_ID)].update(
+            {"increaseActive": True, "lastAppliedBudgetMicros": 15 * M})
+        budgets.live[str(CAMPAIGN)] = 15 * M
+        plan, result = run(db, tabs(campaigns=[campaign_row(**{"Normal daily budget": 12})]), budgets)
+
+        assert [a.action for a in plan.budget_actions] == [sync.BUDGET_SET_NORMAL]
+        assert result.outcome == sync.OUTCOME_APPLIED
+        assert (result.budget_pushes, result.budget_records) == (0, 1)
+        assert budgets.calls == []
+        state = db.get("CampaignBudgetState", STATE_ID)
+        assert state["normalBudgetMicros"] == 12 * M
+        assert state["lastAppliedBudgetMicros"] == 15 * M  # still the elevated amount ADSTA set
 
 
 # --- Per-campaign dry run ----------------------------------------------------------

@@ -639,8 +639,22 @@ def _parse_campaigns(
     return campaigns
 
 
-def _parse_cities(values, issues: List[Issue], known_cities: Set[str]) -> Dict[str, CityRow]:
+def _parse_cities(
+    values, issues: List[Issue], known_cities: Set[str]
+) -> Tuple[Dict[str, CityRow], Set[str]]:
+    """Parses the Cities tab.
+
+    Args:
+        values: The tab's cell grid, header row first.
+        issues: Validation issues are appended here.
+        known_cities: Document ids of the ClimateBaselines collection.
+
+    Returns:
+        The valid rows keyed by city, and the names of cities that have a row
+        with an error.
+    """
     cities: Dict[str, CityRow] = {}
+    invalid: Set[str] = set()
     for reader in _iter_rows(CITIES_TAB, values, CITY_COLUMNS, issues):
         city = reader.text("city", required=True)
         if city and city not in known_cities:
@@ -659,7 +673,9 @@ def _parse_cities(values, issues: List[Issue], known_cities: Set[str]) -> Dict[s
                 activation[key] = activation_lib.normalise_activation_value(key, value)
         if reader.ok and city:
             cities[city] = CityRow(row=reader.row, city=city, activation=activation)
-    return cities
+        elif city:
+            invalid.add(city)
+    return cities, invalid
 
 
 def parse_sheet(tabs: Dict[str, Optional[List[List[Any]]]], known_cities: Set[str]) -> SheetConfig:
@@ -679,12 +695,16 @@ def parse_sheet(tabs: Dict[str, Optional[List[List[Any]]]], known_cities: Set[st
     issues: List[Issue] = []
     accounts = _parse_accounts(tabs.get(ACCOUNTS_TAB), issues)
     campaigns = _parse_campaigns(tabs.get(CAMPAIGNS_TAB), issues, accounts, known_cities)
-    cities = _parse_cities(tabs.get(CITIES_TAB), issues, known_cities)
+    cities, invalid_cities = _parse_cities(tabs.get(CITIES_TAB), issues, known_cities)
 
     for campaign in campaigns:
         if not (campaign.active and campaign.asset_groups):
             continue
         city_row = cities.get(campaign.city)
+        if city_row is None and campaign.city in invalid_cities:
+            # The row's own error is reported and blocks every sync, so the
+            # stored thresholds stay in force: "the default applies" is wrong.
+            continue
         unset = [k for k in activation_lib.ACTIVATION_LIMITS if not city_row or k not in city_row.activation]
         if unset:
             issues.append(

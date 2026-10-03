@@ -220,6 +220,15 @@ class BudgetAction:
             text += " [campaign in dry run: not applied]"
         return text
 
+    @property
+    def is_noop(self) -> bool:
+        """True for a RECORD that writes nothing, so there is nothing to report.
+
+        A RECORD with a state update is not a no-op: it changes ADSTA's normal
+        budget in Firestore, even though Google Ads is left alone.
+        """
+        return self.action == BUDGET_RECORD and not self.state_update
+
     def to_dict(self) -> Dict[str, Any]:
         """Firestore-safe representation."""
         return {
@@ -274,9 +283,9 @@ class SyncPlan:
         return [a for a in self.budget_actions if a.action in (BUDGET_CONFLICT, BUDGET_SKIP)]
 
     @property
-    def visible_budget_actions(self) -> List[BudgetAction]:
-        """Budget actions that change something an operator would notice."""
-        return [a for a in self.budget_actions if a.action in (BUDGET_PUSH, BUDGET_SET_NORMAL)]
+    def reported_budget_actions(self) -> List[BudgetAction]:
+        """Budget actions worth showing an operator: all but the no-ops."""
+        return [a for a in self.budget_actions if not a.is_noop]
 
     def describe(self) -> str:
         """Multi-line, human readable summary of the plan."""
@@ -289,13 +298,13 @@ class SyncPlan:
         if self.errors:
             lines.append(f"  {len(self.errors)} error(s): NOTHING will be written.")
             return "\n".join(lines)
-        if not self.changes and not self.budget_actions:
+        budget_actions = self.reported_budget_actions
+        if not self.changes and not budget_actions:
             lines.append("  No changes: Firestore already matches the sheet.")
         for change in self.changes:
             lines.append(f"  CHANGE {change}")
-        for action in self.budget_actions:
-            if action.action != BUDGET_RECORD:
-                lines.append(f"  BUDGET {action}")
+        for action in budget_actions:
+            lines.append(f"  BUDGET {action}")
         return "\n".join(lines)
 
 
@@ -316,6 +325,10 @@ class SyncResult:
     """Outcome of applying (or attempting) a sync.
 
     Attributes:
+        budget_pushes: Budgets set in Google Ads.
+        budget_records: Normal budgets written to CampaignBudgetState without
+            changing Google Ads: during a severe-weather increase, or when
+            Google Ads already had the sheet's value.
         other_account_errors: Errors in other accounts' rows (scoped syncs
             only). They did not stop this sync but still need fixing.
     """
@@ -325,6 +338,7 @@ class SyncResult:
     source: str
     changes: int = 0
     budget_pushes: int = 0
+    budget_records: int = 0
     conflicts: int = 0
     errors: List[str] = dataclasses.field(default_factory=list)
     plan: Optional[SyncPlan] = None
@@ -554,6 +568,7 @@ def decide_budget(
         )
 
     if state is None:
+        action = BUDGET_RECORD if live_micros == sheet else BUDGET_PUSH
         update = {
             "customerId": row.customer_id,
             "campaignId": str(row.campaign_id),
@@ -563,11 +578,11 @@ def decide_budget(
             "increaseActive": False,
             "increaseStartDate": None,
             "increaseDayNumber": 0,
-            "lastAppliedBudgetMicros": None,
+            # The budget ADSTA last set in Google Ads; a record sets none.
+            "lastAppliedBudgetMicros": sheet if action == BUDGET_PUSH else None,
             "increasedDays": [],
             "lastRunDate": None,
         }
-        action = BUDGET_RECORD if live_micros == sheet else BUDGET_PUSH
         return BudgetAction(
             action=action,
             live_micros=live_micros,
@@ -617,7 +632,12 @@ def decide_budget(
                 **common,
             )
         if normal == sheet:
-            return BudgetAction(action=BUDGET_RECORD, state_update=record, message="unchanged", **common)
+            return BudgetAction(
+                action=BUDGET_RECORD,
+                state_update=record,
+                message="unchanged" if not record else f"ADSTA's normal budget is already {sheet}; recording the sheet value",
+                **common,
+            )
         if stale_sheet:
             return BudgetAction(
                 action=BUDGET_CONFLICT,
@@ -645,9 +665,16 @@ def decide_budget(
             message="unchanged" if not record else f"Google Ads already at {sheet}; recording it as the normal budget",
             **common,
         )
+    # lastAppliedBudgetMicros is only read while an increase is active, and a
+    # push happens only when none is. Setting it keeps the state from showing
+    # the elevated amount of an increase that has already ended.
     push = BudgetAction(
         action=BUDGET_PUSH,
-        state_update={"normalBudgetMicros": sheet, "sheetNormalBudgetMicros": sheet},
+        state_update={
+            "normalBudgetMicros": sheet,
+            "sheetNormalBudgetMicros": sheet,
+            "lastAppliedBudgetMicros": sheet,
+        },
         message=f"Google Ads budget {live_micros} -> {sheet}",
         **common,
     )
@@ -994,6 +1021,13 @@ def apply_plan(
         elif action.action in (BUDGET_SET_NORMAL, BUDGET_RECORD):
             if action.state_update:
                 _write_state(state_ref, action)
+                result.budget_records += 1
+                logger.info(
+                    "Config sheet recorded the normal budget of campaign %s (Google Ads unchanged): %s",
+                    action.campaign_id, action.message,
+                    extra={"sync_id": plan.sync_id, "customer_id": action.customer_id,
+                           "campaign_id": str(action.campaign_id)},
+                )
             entry["result"] = "recorded"
         else:
             entry["result"] = "skipped"
@@ -1003,7 +1037,7 @@ def apply_plan(
                 extra={"sync_id": plan.sync_id, "customer_id": action.customer_id,
                        "campaign_id": str(action.campaign_id)},
             )
-        if action.action != BUDGET_RECORD or action.state_update:
+        if not action.is_noop:
             budget_log.append(entry)
 
     if result.changes or budget_log or plan.conflicts:
@@ -1020,9 +1054,7 @@ def apply_plan(
 
     if failed:
         result.outcome = OUTCOME_PARTIAL
-    elif result.changes or result.budget_pushes or any(
-        a.action == BUDGET_SET_NORMAL for a in plan.budget_actions
-    ):
+    elif result.changes or result.budget_pushes or result.budget_records:
         result.outcome = OUTCOME_APPLIED
     return result
 
@@ -1050,9 +1082,9 @@ def log_result(result: SyncResult, customer_id: Optional[str] = None) -> None:
         details = "; ".join(filter(None, [details] + result.other_account_errors[:5]))
     logger.log(
         level,
-        "Config sheet sync %s (%s): outcome=%s, changes=%d, budget pushes=%d, conflicts=%d%s",
+        "Config sheet sync %s (%s): outcome=%s, changes=%d, budget pushes=%d, budgets recorded=%d, conflicts=%d%s",
         result.sync_id, result.source, result.outcome, result.changes, result.budget_pushes,
-        result.conflicts, f". {details}" if details else "",
+        result.budget_records, result.conflicts, f". {details}" if details else "",
         extra=telemetry.event_fields(
             EVENT_CONFIG_SYNC,
             sync_id=result.sync_id,
@@ -1061,6 +1093,7 @@ def log_result(result: SyncResult, customer_id: Optional[str] = None) -> None:
             customer_id=customer_id,
             changes=result.changes,
             budget_pushes=result.budget_pushes,
+            budget_records=result.budget_records,
             conflicts=result.conflicts,
             error_count=len(result.errors),
             other_account_error_count=len(result.other_account_errors),
@@ -1092,12 +1125,12 @@ def append_sync_log(service: Any, spreadsheet_id: str, result: SyncResult,
     details: List[str] = list(result.errors[:10]) + result.other_account_errors[:10]
     if result.plan:
         details += [str(c) for c in result.plan.changes[:20]]
-        details += [str(a) for a in result.plan.budget_actions if a.action != BUDGET_RECORD][:20]
+        details += [str(a) for a in result.plan.reported_budget_actions[:20]]
     row = [
         now.strftime("%Y-%m-%d %H:%M:%S"),
         f"{result.source} ({scope})" if scope else result.source,
         result.outcome,
-        result.changes + result.budget_pushes,
+        result.changes + result.budget_pushes + result.budget_records,
         result.conflicts,
         len(result.errors) + len(result.other_account_errors),
         "\n".join(details)[:45000],
